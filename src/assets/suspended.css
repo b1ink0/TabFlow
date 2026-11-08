@@ -1,0 +1,154 @@
+:root {
+  --bg: var(--bg-app);
+  --surface: var(--bg-surface);
+  --text: var(--text-primary);
+  --muted: var(--text-secondary);
+  --preview-surface: color-mix(in srgb, var(--bg-surface) 76%, transparent);
+  --preview-muted: var(--text-secondary);
+}
+* {
+  box-sizing: border-box;
+}
+[hidden] {
+  display: none !important;
+}
+body {
+  margin: 0;
+  min-height: 100vh;
+  min-height: 100svh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 32px 20px;
+  background: var(--bg);
+  color: var(--text);
+  font:
+    14px/1.5 system-ui,
+    sans-serif;
+}
+main {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 24px;
+  width: 100%;
+  max-width: 640px;
+  padding: 40px 32px;
+  background: var(--surface);
+  border-radius: 12px;
+  text-align: center;
+}
+body:has(#preview:not([hidden])) main {
+  max-width: 560px;
+  padding: 28px;
+  gap: 20px;
+  background: var(--preview-surface);
+  --muted: var(--preview-muted);
+}
+body:has(#preview:not([hidden])) .context {
+  gap: 8px;
+}
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 500;
+}
+.mark {
+  flex-shrink: 0;
+}
+.context {
+  display: flex;
+  min-width: 0;
+  width: 100%;
+  flex-direction: column;
+  gap: 12px;
+}
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+}
+h1,
+p {
+  margin: 0;
+}
+h1 {
+  font-size: 24px;
+  line-height: 1.35;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  overflow-wrap: anywhere;
+}
+.eyebrow,
+#url,
+#status,
+#preview-note {
+  color: var(--muted);
+  font-size: 13px;
+}
+#url,
+#status {
+  overflow-wrap: anywhere;
+}
+#preview-note {
+  font-size: 12px;
+}
+button {
+  border: 0;
+  border-radius: 6px;
+  min-height: 44px;
+  padding: 12px 20px;
+  background: var(--text);
+  color: var(--bg);
+  font:
+    500 14px/1.5 system-ui,
+    sans-serif;
+  cursor: pointer;
+  transition: opacity 150ms;
+}
+button:hover {
+  opacity: 0.9;
+}
+button:disabled {
+  opacity: 0.5;
+  cursor: wait;
+}
+a {
+  display: flex;
+  align-items: center;
+  min-height: 44px;
+  color: var(--muted);
+  font-size: 13px;
+  text-underline-offset: 4px;
+}
+a:hover {
+  color: var(--text);
+}
+button:focus-visible,
+a:focus-visible {
+  outline: 2px solid var(--text);
+  outline-offset: -2px;
+}
+#preview {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  object-position: center;
+  opacity: 0.5;
+  pointer-events: none;
+}
+@media (max-width: 480px) {
+  main {
+    padding: 32px 20px;
+  }
+  h1 {
+    font-size: 20px;
+  }
+}

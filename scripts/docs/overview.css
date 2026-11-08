@@ -1,0 +1,115 @@
+* {
+  box-sizing: border-box;
+}
+html,
+body {
+  margin: 0;
+  font-family: Arial, sans-serif;
+  background: transparent;
+  color: #d8d8d8;
+}
+.browser {
+  display: flex;
+  flex-direction: column;
+  width: 1640px;
+  height: 920px;
+  overflow: hidden;
+  border: 1px solid #30343a;
+  border-radius: 16px;
+  background: #131313;
+}
+
+.body {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+}
+.page {
+  position: relative;
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  background: #191b1e;
+  color: #d5d8dd;
+}
+.document {
+  display: flex;
+  flex: 1;
+  filter: blur(3px);
+  opacity: 0.58;
+  transform: scale(1.01);
+}
+.nav {
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+  width: 210px;
+  padding: 36px 26px;
+  background: #202227;
+  border-right: 1px solid #34373c;
+  font-size: 15px;
+}
+.active {
+  color: #e3e7ec;
+  font-weight: bold;
+}
+.main {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 24px;
+  padding: 56px 65px;
+}
+.eyebrow {
+  font-size: 13px;
+  letter-spacing: 1px;
+  color: #a0a8b2;
+}
+h1 {
+  font-size: 38px;
+  margin: 0;
+  font-weight: 600;
+}
+h2 {
+  font-size: 22px;
+  margin: 0;
+}
+p {
+  font-size: 16px;
+  line-height: 1.7;
+  margin: 0;
+  max-width: 700px;
+}
+.note {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 24px;
+  border: 1px solid #34373c;
+  border-radius: 10px;
+  background: #23262a;
+}
+.pills {
+  display: flex;
+  gap: 10px;
+}
+.pill {
+  padding: 7px 12px;
+  background: #303339;
+  border-radius: 6px;
+  font-size: 13px;
+}
+.sidebar {
+  display: flex;
+  width: 440px;
+  flex-shrink: 0;
+  border-left: 1px solid #494949;
+  box-shadow: -8px 0 28px #0003;
+  z-index: 1;
+}
+.sidebar img {
+  display: block;
+  width: 440px;
+  height: 920px;
+}

@@ -1,0 +1,350 @@
+@import 'tailwindcss';
+@import '@nuxt/ui';
+@font-face {
+  font-family: 'Inter Variable';
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url('@fontsource-variable/inter/files/inter-latin-wght-normal.woff2') format('woff2');
+}
+
+@theme inline {
+  --font-sans: 'Inter Variable', ui-sans-serif, system-ui, sans-serif;
+  --color-canvas: var(--bg-app);
+  --color-sidebar: var(--bg-sidebar);
+  --color-surface: var(--bg-surface);
+  --color-raised: var(--bg-raised);
+  --color-line: var(--border-subtle);
+  --color-ink: var(--text-primary);
+  --color-secondary: var(--text-secondary);
+  --color-muted: var(--text-muted);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-overlay: var(--bg-overlay);
+  --color-selected: var(--bg-selected);
+  --color-hover: var(--bg-hover);
+  --color-chat-sidebar: var(--bg-chat-sidebar);
+  --color-line-strong: var(--border-strong);
+  --color-focus: var(--focus);
+  --color-warning: var(--warning);
+  --color-danger: var(--danger);
+}
+body {
+  margin: 0;
+  background: var(--bg-app);
+  color: var(--text-primary);
+  font-family: var(--font-sans);
+  font-size: 14px;
+  line-height: 1.5;
+  font-synthesis: none;
+  -webkit-font-smoothing: antialiased;
+}
+/* Deliberately shared above utility layers: Nuxt and native controls use one inset focus.
+   The tag editor focuses its enclosing control instead of outlining the inner text cursor. */
+:where(button, a, input, textarea, select, summary, [tabindex]):focus-visible:not(
+    [data-slot='tagsInput']
+  ),
+[data-slot='base']:has([data-slot='tagsInput']:focus-visible) {
+  outline: none;
+  box-shadow: inset 0 0 0 2px var(--focus);
+}
+[data-slot='tagsInput']:focus-visible {
+  outline: none;
+  box-shadow: none;
+}
+.assistant-composer:has(textarea:focus-visible) {
+  box-shadow: inset 0 0 0 2px var(--focus);
+}
+.assistant-composer textarea:focus-visible {
+  outline: none;
+  box-shadow: none;
+}
+@media (forced-colors: active) {
+  :where(button, a, input, textarea, select, summary, [tabindex]):focus-visible:not(
+      [data-slot='tagsInput']
+    ),
+  [data-slot='base']:has([data-slot='tagsInput']:focus-visible),
+  .assistant-composer:has(textarea:focus-visible) {
+    outline: 2px solid Highlight;
+    outline-offset: -2px;
+  }
+}
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation: none;
+  mix-blend-mode: normal;
+}
+::view-transition-new(root) {
+  z-index: 1;
+}
+button:not(:disabled),
+summary {
+  cursor: pointer;
+}
+button:disabled {
+  cursor: not-allowed;
+}
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-strong) transparent;
+}
+[data-reka-scroll-area-viewport] > div {
+  display: block !important;
+  min-width: 0;
+  width: 100%;
+}
+@layer components {
+  .field {
+    @apply min-h-9 w-full min-w-0 rounded-md border border-line bg-surface px-3 py-2 text-[13px] text-ink transition-colors placeholder:text-muted;
+  }
+  .field-label {
+    @apply flex flex-col gap-2 text-[13px] text-secondary;
+  }
+  .card {
+    @apply rounded-lg bg-surface;
+  }
+}
+.assistant-markdown.markstream-vue {
+  color: var(--text-primary);
+}
+.assistant-markdown.markstream-vue :is(h1, h2, h3, h4, p, ul, ol, blockquote, pre) {
+  margin: 0;
+}
+.assistant-markdown.markstream-vue :is(h1, h2, h3, h4) {
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.5;
+}
+.assistant-markdown.markstream-vue :is(ul, ol) {
+  padding-left: 20px;
+}
+.assistant-markdown.markstream-vue a {
+  color: var(--text-primary);
+  text-decoration: underline;
+  text-decoration-color: var(--text-muted);
+  text-underline-offset: 3px;
+}
+@keyframes reveal {
+  from {
+    height: 0;
+    opacity: 0;
+  }
+  to {
+    height: var(--reka-collapsible-content-height);
+    opacity: 1;
+  }
+}
+@keyframes conceal {
+  from {
+    height: var(--reka-collapsible-content-height);
+    opacity: 1;
+  }
+  to {
+    height: 0;
+    opacity: 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* Portaled and nested surfaces share an edge and elevation in both themes. */
+[role='menu'],
+[role='listbox'],
+[data-reka-popper-content-wrapper] > [data-slot='content'] {
+  background-color: var(--bg-overlay);
+  border: 1px solid var(--border-strong);
+  box-shadow: 0 8px 28px #00000040;
+}
+
+/* Reka uses the same state attributes for pointer and keyboard navigation. */
+:where([role='menuitem'], [role='menuitemcheckbox'], [role='menuitemradio'], [role='option']) {
+  border-radius: var(--radius-md);
+}
+:where(
+  [role='menuitem'],
+  [role='menuitemcheckbox'],
+  [role='menuitemradio'],
+  [role='option']
+)::before {
+  border-radius: inherit;
+}
+:where([role='menuitem'], [role='menuitemcheckbox'], [role='menuitemradio'], [role='option']):is(
+  [aria-selected='true'],
+  [aria-checked='true'],
+  [data-state='checked']
+) {
+  background-color: var(--bg-selected);
+}
+:where([role='menuitem'], [role='menuitemcheckbox'], [role='menuitemradio'], [role='option']):is(
+    [data-highlighted],
+    [data-state='open'],
+    :focus-visible
+  ):not([data-disabled]):not([aria-disabled='true']) {
+  background-color: var(--bg-hover);
+  box-shadow: inset 0 0 0 1px var(--border-strong);
+}
+:where([role='menuitem'], [role='menuitemcheckbox'], [role='menuitemradio'], [role='option']):is(
+    [data-highlighted],
+    [data-state='open'],
+    :focus-visible
+  ):not([data-disabled]):not([aria-disabled='true'])::before {
+  background-color: var(--bg-hover);
+}
+@media (forced-colors: active) {
+  :where([role='menuitem'], [role='menuitemcheckbox'], [role='menuitemradio'], [role='option']):is(
+    [data-highlighted],
+    [data-state='open'],
+    :focus-visible
+  ) {
+    outline: 2px solid Highlight;
+    outline-offset: -2px;
+  }
+}
+
+:where([role='menuitem'], [role='menuitemcheckbox'], [role='menuitemradio'], [role='option']):is(
+    [aria-selected='true'],
+    [aria-checked='true'],
+    [data-state='checked']
+  ):not([data-highlighted]):not([data-state='open'])::before {
+  background-color: var(--bg-selected);
+}
+:where(
+    [role='menuitem'],
+    [role='menuitemcheckbox'],
+    [role='menuitemradio'],
+    [role='option']
+  ):focus-visible:not([data-disabled]):not([aria-disabled='true']) {
+  box-shadow: inset 0 0 0 2px var(--focus);
+}
+
+/* Sortable's fallback is the single solid preview; the source marks its drop slot. */
+.tab-drag-preview {
+  max-width: calc(100vw - 16px);
+  background: var(--bg-overlay) !important;
+  border: 1px solid var(--border-strong);
+  border-radius: 8px;
+  box-shadow: 0 8px 24px #0005;
+  opacity: 1 !important;
+  pointer-events: none;
+}
+.tab-drag-placeholder {
+  background: var(--bg-selected);
+  border-radius: 8px;
+  opacity: 0.3;
+}
+.reorder-source {
+  opacity: 0.35;
+}
+.tab-drag-preview * {
+  pointer-events: none !important;
+}
+.drag-drop-marker {
+  position: fixed;
+  z-index: 999;
+  pointer-events: none;
+  box-sizing: border-box;
+}
+[data-reorder-drop='before'] {
+  box-shadow: none;
+}
+[data-reorder-drop='after'] {
+  box-shadow: none;
+}
+.drag-drop-feedback {
+  position: fixed;
+  z-index: 1002;
+  pointer-events: none;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  border: 1px solid var(--border-strong);
+  border-radius: 5px;
+  padding: 3px 8px;
+  background: var(--bg-overlay);
+  color: var(--text-primary);
+  font-size: 12px;
+  line-height: 16px;
+  box-shadow: 0 2px 6px #0002;
+}
+.tab-drag-preview[data-drag-lift] {
+  left: 0 !important;
+  top: 0 !important;
+  translate: none;
+  transform: var(--tab-drag-transform, translate3d(8px, 8px, 0)) !important;
+}
+.tab-drag-placeholder:not(.tab-drag-preview) > * {
+  visibility: hidden;
+}
+[data-tabflow-scroll] [data-reka-scroll-area-viewport],
+[data-horizontal-tabs] [role='tablist'] {
+  scrollbar-width: none !important;
+}
+[data-tabflow-scroll] [data-reka-scroll-area-viewport]::-webkit-scrollbar,
+[data-horizontal-tabs] [role='tablist']::-webkit-scrollbar {
+  display: none;
+  width: 0;
+  height: 0;
+}
+[role='option'][data-slot='item'] {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+[role='option'] > [data-slot='itemWrapper'] {
+  min-width: 0;
+  flex: 1;
+}
+[role='option'] > [data-slot='itemTrailing'] {
+  display: flex;
+  flex-shrink: 0;
+  align-self: center;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+}
+[role='option'] [data-slot='itemTrailingIcon'] {
+  position: static;
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+}
+.assistant-composer > [data-slot='header']:not(:has([data-attachment-preview], [role='alert'])) {
+  display: none;
+}
+[data-tree-drop='inside'] {
+  background: var(--bg-selected);
+}
+[data-tree-drop='before'] {
+  box-shadow: none;
+}
+[data-tree-drop='after'],
+[data-tree-drop='root'] {
+  box-shadow: none;
+}
+[data-tree-drop]::after {
+  content: none;
+  position: absolute;
+  right: 4px;
+  top: 0;
+  z-index: 30;
+  border-radius: 4px;
+  padding: 2px 6px;
+  background: var(--text-primary);
+  color: var(--bg-app);
+  font-size: 12px;
+  font-weight: 600;
+  pointer-events: none;
+}
+[data-tree-drop='after']::after,
+[data-tree-drop='root']::after {
+  top: auto;
+  bottom: 0;
+}

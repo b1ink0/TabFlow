@@ -1,0 +1,18 @@
+{
+  "extends": "./.wxt/tsconfig.json",
+  "compilerOptions": {
+    "strict": true,
+    "noImplicitAny": true,
+    "noFallthroughCasesInSwitch": true,
+    "types": ["chrome", "node", "vite/client"],
+    "skipLibCheck": true
+  },
+  "exclude": [
+    "local-docs",
+    "artifacts",
+    "node_modules",
+    ".output",
+    "extension",
+    "tests/browser-profile"
+  ]
+}

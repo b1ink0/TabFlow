@@ -1,0 +1,83 @@
+{
+  "name": "tabflow",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "dev": "wxt",
+    "build": "wxt build",
+    "zip": "wxt zip",
+    "postinstall": "wxt prepare",
+    "typecheck": "vue-tsc --noEmit",
+    "lint": "eslint .",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "test": "vitest run",
+    "test:browser": "node scripts/browser-smoke.mjs",
+    "test:browser:workspace": "node scripts/browser-workspace-smoke.mjs",
+    "check": "bun run typecheck && bun run --bun lint && bun run --bun test && bun run --bun build && bun run --bun format:check",
+    "package": "bun scripts/package.mjs",
+    "test:ui": "node scripts/ui-smoke.mjs",
+    "audit:public": "node scripts/audit-public.mjs",
+    "screenshots": "node scripts/capture-docs.mjs",
+    "icons": "node scripts/generate-icons.mjs",
+    "prepare": "husky",
+    "format:staged": "lint-staged",
+    "lint:fix": "eslint . --fix"
+  },
+  "dependencies": {
+    "@fontsource-variable/inter": "5.3.0",
+    "@iconify-json/ph": "1.2.2",
+    "@nuxt/ui": "4.11.3",
+    "@phosphor-icons/vue": "2.2.1",
+    "@tailwindcss/vite": "4.3.3",
+    "@typesafe-ai/sdk": "0.6.0",
+    "@vueuse/core": "15.0.0",
+    "clsx": "2.1.1",
+    "dexie": "4.4.6",
+    "markstream-vue": "2.0.19",
+    "openai": "7.30.1",
+    "pinia": "4.0.3",
+    "reka-ui": "2.10.5",
+    "tailwind-merge": "3.7.0",
+    "tailwindcss": "4.3.3",
+    "vue": "3.5.43",
+    "vue-draggable-plus": "^0.6.1",
+    "zod": "4.6.5"
+  },
+  "devDependencies": {
+    "@eslint/js": "10.0.1",
+    "@playwright/test": "1.64.0",
+    "@types/chrome": "0.3.4",
+    "@types/node": "26.6.4",
+    "@wxt-dev/module-vue": "1.0.3",
+    "eslint": "10.12.0",
+    "eslint-config-prettier": "10.1.8",
+    "eslint-plugin-vue": "10.11.1",
+    "fake-indexeddb": "6.2.5",
+    "husky": "9.1.7",
+    "lint-staged": "16.4.0",
+    "prettier": "3.9.9",
+    "typescript": "6.0.3",
+    "typescript-eslint": "8.71.1",
+    "vite": "8.3.3",
+    "vitest": "5.0.3",
+    "vue-component-type-helpers": "3.3.13",
+    "vue-tsc": "3.3.12",
+    "wxt": "0.21.4"
+  },
+  "packageManager": "bun@1.4.2",
+  "license": "MIT",
+  "lint-staged": {
+    "*.{js,mjs,cjs,ts,mts,cts,vue}": [
+      "eslint --fix --max-warnings=0 --no-warn-ignored",
+      "prettier --write"
+    ],
+    "*.{css,html,json,md,yml,yaml}": [
+      "prettier --write"
+    ]
+  }
+}

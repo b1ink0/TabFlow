@@ -1,0 +1,11 @@
+node_modules
+.wxt
+.output
+extension
+artifacts
+package-lock.json
+bun.lock
+public/icons
+
+local-docs
+preview

@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <script src="/theme-init.js"></script>
+    <link rel="stylesheet" href="/theme.css" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>TabFlow</title>
+    <link rel="icon" href="/icons/16.png" />
+  </head>
+  <body>
+    <img id="preview" alt="Saved page preview" hidden />
+    <main aria-labelledby="title">
+      <div class="brand">
+        <img class="mark" src="/icons/mark.svg" alt="" width="24" height="24" />
+        <span>TabFlow</span>
+      </div>
+      <div class="context">
+        <p class="eyebrow">Tab suspended</p>
+        <h1 id="title">Suspended tab</h1>
+        <p id="url"></p>
+      </div>
+      <div class="actions">
+        <button id="wake">Wake this tab</button>
+        <a id="original" rel="noreferrer">Open original address</a>
+      </div>
+      <p id="status" role="status" hidden></p>
+      <p id="preview-note" hidden></p>
+    </main>
+    <script type="module" src="./main.ts"></script>
+  </body>
+</html>
