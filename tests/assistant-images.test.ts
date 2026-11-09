@@ -1,10 +1,13 @@
 import { describe, it, expect } from 'vitest';
-import { assistantImagesSchema, supportsImageInput } from '../src/shared/assistant-images';
-import { assistantRequestSchema } from '../src/shared/assistant';
-import { retryTurn } from '../src/shared/assistant-retry';
-import { assistantThreadSchema } from '../src/shared/assistant';
+import {
+  assistantImagesSchema,
+  supportsImageInput,
+} from '../src/shared/assistant/assistant-images';
+import { assistantRequestSchema } from '../src/shared/assistant/assistant';
+import { retryTurn } from '../src/shared/assistant/assistant-retry';
+import { assistantThreadSchema } from '../src/shared/assistant/assistant';
 import { DEFAULTS } from '../src/shared/model';
-import { boundOrchestratorRequest } from '../src/ai/request-context';
+import { boundOrchestratorRequest } from '../src/ai/context/request-context';
 const image = {
   id: 'image',
   name: 'reference.png',

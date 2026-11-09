@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { boundOrchestratorRequest } from '../src/ai/request-context';
-import { splitOversizedBatch } from '../src/ai/context';
+import { boundOrchestratorRequest } from '../src/ai/context/request-context';
+import { splitOversizedBatch } from '../src/ai/context/context';
 import { newRecord } from '../src/shared/model';
 
 const call = (id: string) => ({

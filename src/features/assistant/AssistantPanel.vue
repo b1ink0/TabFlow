@@ -1,12 +1,13 @@
 <script setup lang="ts">
-import { skipFailedCollectionBatch } from '../../shared/collection-analysis';
+import { skipFailedCollectionBatch } from '../../shared/organization/collection-analysis';
 import BrowserWorkProgress from '../workspace/BrowserWorkProgress.vue';
 import AssistantImages from './AssistantImages.vue';
+import FailedRunDiagnostics from './FailedRunDiagnostics.vue';
 import {
   supportsImageInput,
   assistantImagesSchema,
   type AssistantImage,
-} from '../../shared/assistant-images';
+} from '../../shared/assistant/assistant-images';
 import AssistantAttachments from './AssistantAttachments.vue';
 import AssistantApprovalControls from './AssistantApprovalControls.vue';
 import AssistantPermissionReviews from './AssistantPermissionReviews.vue';
@@ -16,9 +17,13 @@ import {
   assistantArtifactSchema,
   type AssistantArtifact,
   type ApprovalMode,
-} from '../../shared/assistant-actions';
-import { resolveAttachments, type AssistantAttachment } from '../../shared/assistant-context';
-import { workspaceEditLabel } from '../../shared/workspace-edits';
+} from '../../shared/assistant/assistant-actions';
+import {
+  resolveAttachments,
+  snapshotAttachments,
+  type AssistantAttachment,
+} from '../../shared/assistant/assistant-context';
+import { workspaceEditLabel } from '../../shared/workspace/workspace-edits';
 import AssistantRunTiming from './AssistantRunTiming.vue';
 import UiCollapsible from '../../ui/UiCollapsible.vue';
 import { ref, computed, onMounted, watch, nextTick } from 'vue';
@@ -73,25 +78,25 @@ import RunHistory from './RunHistory.vue';
 import ExternalClassificationDialog from '../projects/ExternalClassificationDialog.vue';
 import { useWorkspace } from '../../stores/workspace';
 import { useAssistantConversations } from '../../stores/assistant';
-import { cn } from '../../shared/cn';
+import { cn } from '../../shared/utils/cn';
 import {
   type AssistantCommand,
   type AssistantProjectDraft,
   type AssistantMessage,
   type AssistantRequest,
-} from '../../shared/assistant';
+} from '../../shared/assistant/assistant';
 import { useDialog } from '../../stores/dialog';
-import { conversationBranch, answerBranches } from '../../shared/assistant-branches';
-import { canRetry, retryTurn, incompleteToolTurn } from '../../shared/assistant-retry';
+import { conversationBranch, answerBranches } from '../../shared/assistant/assistant-branches';
+import { canRetry, retryTurn, incompleteToolTurn } from '../../shared/assistant/assistant-retry';
 import { rpc } from '../../shared/rpc';
-import { tagHash } from '../../shared/tag-analysis';
-import type { PermissionPolicy } from '../../shared/permission-review';
+import { tagHash } from '../../shared/organization/tag-analysis';
+import type { PermissionPolicy } from '../../shared/assistant/permission-review';
 import { errorMessage } from '../../shared/types';
-import { requestModelAccess } from '../../ai/access';
-import { runModelInference } from '../../ai/inference-lane';
+import { requestModelAccess } from '../../ai/providers/access';
+import { runModelInference } from '../../ai/inference/inference-lane';
 import MarkdownRender, { type NodeRendererProps } from 'markstream-vue';
 import 'markstream-vue/index.css';
-import type { WorkItemDraft } from '../../ai/client';
+import type { WorkItemDraft } from '../../ai/workflows/contracts';
 import type { ActionAnalysis } from '../../shared/types';
 const store = useWorkspace();
 const attachmentTrigger = ref<HTMLElement>();
@@ -676,7 +681,7 @@ async function performAsk(
           }
         : {
             images: assistantImagesSchema.parse(images.value),
-            attachments: structuredClone(attachments.value.map((item) => ({ ...item }))),
+            attachments: snapshotAttachments(attachments.value),
             restrictToScope: attachments.value.length > 0 || scope.value === 'selected',
             classificationMode: classificationMode.value === 'chat' ? 'chat' : 'configured',
             task: task.value as AssistantRequest['task'],
@@ -821,7 +826,10 @@ async function performAsk(
     const actionCheckpoint = {
       id: actionAnalysisId,
       receipt: (
-        receipt: Omit<import('../../shared/inference-receipt').InferenceReceipt, 'analysisId'>,
+        receipt: Omit<
+          import('../../shared/inference/inference-receipt').InferenceReceipt,
+          'analysisId'
+        >,
       ) => rpc('saveInferenceReceipt', { ...receipt, analysisId: actionAnalysisId }),
       load: () => rpc('getActionAnalysis', { id: actionAnalysisId }),
       rebase: () => rpc('rebaseActionAnalysis', { id: actionAnalysisId }),
@@ -851,7 +859,7 @@ async function performAsk(
         'The original project context is no longer available. Review it before sending a new request.',
       );
     if (request.task === 'work') {
-      const { answerWorkQuestion } = await import('../../ai/client');
+      const { answerWorkQuestion } = await import('../../ai/runtime/agent');
       const result = await runModelInference(
         () =>
           answerWorkQuestion(store.app!, instruction, previous, controller!.signal, {
@@ -955,9 +963,7 @@ async function performAsk(
             onCheckpoint: async (state) => {
               if (persistenceFailure) throw persistenceFailure;
               const recent = liveMessage!.activity;
-              Object.assign(liveMessage!, state);
-              liveMessage!.activity = recent;
-              await chat.save();
+              await chat.updateMessage(liveMessage!.id, { ...state, activity: recent });
             },
             onCollectionDraft: async (draft, id, expectedFingerprint) => {
               const previousScope = store.app?.collectionProposals.find(
@@ -1018,7 +1024,7 @@ async function performAsk(
       checked.value = new Set(result.plan?.actions.map((_, index) => index) || []);
       if (result.collectionApplicationId)
         collectionProposalId.value = result.collectionApplicationId;
-      Object.assign(liveMessage, {
+      await chat.updateMessage(liveMessage.id, {
         content: result.answer,
         deliveryStatus: 'complete',
         sources: result.sources,
@@ -1030,7 +1036,6 @@ async function performAsk(
         collectionProposalId: collectionProposalId.value || undefined,
         collectionApplyRequested: result.collectionApplyRequested || false,
       });
-      await chat.save();
       return;
     }
     const records = request.recordIds
@@ -1040,7 +1045,7 @@ async function performAsk(
       throw new Error(
         'Some tabs in the original scope are no longer open. Review the changed scope before sending a new request.',
       );
-    const { generatePlan } = await import('../../ai/client');
+    const { generatePlan } = await import('../../ai/workflows/generation');
     const plan =
       retryState?.failed.plan ||
       (await runModelInference(
@@ -1937,7 +1942,11 @@ defineExpose({
                   /></UiButton>
                 </template>
               </div>
-              <div v-if="canRetry(chat.current, message)" class="flex flex-wrap items-center gap-2">
+              <div
+                v-if="canRetry(chat.current, message) || message.deliveryStatus === 'error'"
+                class="flex flex-wrap items-center gap-2"
+              >
+                <FailedRunDiagnostics :message="message" />
                 <UiButton
                   v-if="
                     message.analysisFailure &&

@@ -3,7 +3,7 @@ import { ref, watch } from 'vue';
 import UiDisclosure from '../../ui/UiDisclosure.vue';
 import UiButton from '../../ui/UiButton.vue';
 import { rpc } from '../../shared/rpc';
-import { tagHash } from '../../shared/tag-analysis';
+import { tagHash } from '../../shared/organization/tag-analysis';
 import type { CollectionProposal, ProposalRevisionSummary } from '../../shared/types';
 const props = defineProps<{ proposal: CollectionProposal; disabled?: boolean }>();
 const emit = defineEmits<{ restored: [] }>();

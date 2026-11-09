@@ -1,9 +1,9 @@
 // Explicit opt-in; production reconciliation with synthetic evidence and no browser access.
 import { writeFileSync } from 'node:fs';
-import { generateCollectionDraft } from '../src/ai/client';
+import { generateCollectionDraft } from '../src/ai/workflows/generation';
 import { DEFAULTS, newRecord } from '../src/shared/model';
-import { collectionAnalysisSchema } from '../src/shared/collection-analysis';
-import { CLASSIFICATION_CONTRACT } from '../src/ai/classification';
+import { collectionAnalysisSchema } from '../src/shared/organization/collection-analysis';
+import { CLASSIFICATION_CONTRACT } from '../src/ai/workflows/classification';
 import type { AppState, CollectionAnalysis, CollectionDraft } from '../src/shared/types';
 const base = process.env.TABFLOW_CHAT_URL,
   model = process.env.TABFLOW_CHAT_MODEL;
@@ -133,7 +133,7 @@ let checkpoint: CollectionAnalysis = collectionAnalysisSchema.parse({
   unresolvedRecordIds: [],
   tagVocabulary: [],
 });
-const receipts: import('../src/shared/inference-receipt').InferenceReceipt[] = [];
+const receipts: import('../src/shared/inference/inference-receipt').InferenceReceipt[] = [];
 const started = Date.now();
 const draft = await generateCollectionDraft(app, {
   onProgress: console.log,

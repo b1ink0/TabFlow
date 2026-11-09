@@ -77,6 +77,22 @@ body {
 ::view-transition-new(root) {
   z-index: 1;
 }
+[role='tablist'] > [data-slot='indicator'] {
+  transition-property: background-color, opacity !important;
+}
+@keyframes workspace-fade-in {
+  from {
+    opacity: 0.45;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@media (prefers-reduced-motion: no-preference) {
+  [data-workspace-view] > :not([role='status']) {
+    animation: workspace-fade-in 140ms ease-out;
+  }
+}
 button:not(:disabled),
 summary {
   cursor: pointer;

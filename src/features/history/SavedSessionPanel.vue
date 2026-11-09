@@ -119,7 +119,11 @@ function finish() {
           : 'flex flex-wrap items-center justify-between gap-3'
       "
     >
-      <div v-if="showCounts" class="flex min-w-0 flex-1 flex-col gap-1">
+      <div
+        v-if="showCounts"
+        class="flex min-w-0 flex-col gap-1"
+        :class="footer ? 'flex-1' : 'grow basis-56'"
+      >
         <h2
           v-if="update || (!footer && (!compact || saved?.missingTabs))"
           class="text-sm font-semibold"
@@ -152,8 +156,10 @@ function finish() {
       </div>
       <div
         ref="footerActions"
-        class="flex shrink-0 items-center gap-1"
-        :class="footer ? (!showCounts ? 'w-full justify-between' : '') : 'flex-wrap'"
+        class="flex min-w-0 max-w-full items-center gap-1"
+        :class="
+          footer ? (!showCounts ? 'w-full shrink-0 justify-between' : 'shrink-0') : 'flex-wrap'
+        "
       >
         <UiButton
           v-if="footer"

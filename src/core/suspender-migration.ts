@@ -1,6 +1,6 @@
 import * as db from './db';
 import { now, uuid } from '../shared/model';
-import { suspendedInfo } from '../shared/urls';
+import { suspendedInfo } from '../shared/tabs/urls';
 import {
   errorMessage,
   type AppState,

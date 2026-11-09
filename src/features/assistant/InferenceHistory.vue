@@ -4,7 +4,7 @@ import UiCollapsible from '../../ui/UiCollapsible.vue';
 import { ref, watch } from 'vue';
 import { liveQuery } from 'dexie';
 import { database } from '../../core/db';
-import type { InferenceReceipt } from '../../shared/inference-receipt';
+import type { InferenceReceipt } from '../../shared/inference/inference-receipt';
 import UiButton from '../../ui/UiButton.vue';
 const props = defineProps<{ analysisId: string }>();
 const open = ref(false),

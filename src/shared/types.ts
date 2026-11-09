@@ -1,4 +1,4 @@
-import type { AssistantThread, AssistantToolEvent } from './assistant';
+import type { AssistantThread, AssistantToolEvent } from './assistant/assistant';
 export interface AssistantAuditEntry {
   id: string;
   messageId: string;
@@ -160,7 +160,7 @@ export interface Membership {
   updatedAt: number;
 }
 export interface OrganizationProposal {
-  tagReview?: import('./tag-analysis').TagReview;
+  tagReview?: import('./organization/tag-analysis').TagReview;
   unresolvedTagSuggestions?: CollectionProposal['unresolvedTagSuggestions'];
   id: string;
   projectId: string;
@@ -185,7 +185,7 @@ export interface OrganizationProposal {
 export interface CollectionProposal {
   excludedRecordIds?: string[];
   name?: string;
-  tagReview?: import('./tag-analysis').TagReview;
+  tagReview?: import('./organization/tag-analysis').TagReview;
   decisionContract?: string;
   legacyCategoriesRetained?: boolean;
   unresolvedTagSuggestions?: Array<{
@@ -524,8 +524,8 @@ export interface CalendarEvent {
   htmlLink: string | null;
 }
 export interface AppState {
-  assistantChanges?: import('./assistant-actions').AssistantChange[];
-  assistantApprovalRules?: import('./assistant-actions').ApprovalRule[];
+  assistantChanges?: import('./assistant/assistant-actions').AssistantChange[];
+  assistantApprovalRules?: import('./assistant/assistant-actions').ApprovalRule[];
   tagVocabulary?: string[];
   update?: UpdateSummary | null;
   session?: SessionSummary | null;
@@ -668,10 +668,10 @@ export interface Backup {
 export interface DatabaseEntities {
   assistantThreadSummaries: Omit<AssistantThread, 'messages'>;
   proposalRevisions: ProposalRevision;
-  permissionReviews: import('./permission-review').PermissionReview;
-  assistantChanges: import('./assistant-actions').AssistantChange;
-  tagAnalyses: import('./tag-analysis').TagAnalysis;
-  inferenceReceipts: import('./inference-receipt').InferenceReceipt;
+  permissionReviews: import('./assistant/permission-review').PermissionReview;
+  assistantChanges: import('./assistant/assistant-actions').AssistantChange;
+  tagAnalyses: import('./organization/tag-analysis').TagAnalysis;
+  inferenceReceipts: import('./inference/inference-receipt').InferenceReceipt;
   assistantAudit: AssistantAuditEntry;
   actionAnalyses: ActionAnalysis;
   collectionAnalyses: CollectionAnalysis;

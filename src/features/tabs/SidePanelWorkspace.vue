@@ -20,16 +20,20 @@ import WorkspaceTabRow from './WorkspaceTabRow.vue';
 import { useTabTreeDrag } from './useTabTreeDrag';
 import { useTabListMotion } from './useTabListMotion';
 import { useReorderGesture, droppedOrder, type ReorderEvent } from '../workspace/useReorderGesture';
-import { orderTabTreeDrop } from '../../shared/tab-tree-drop';
-import { tabAncestors } from '../../shared/tab-tree';
+import { orderTabTreeDrop } from '../../shared/tabs/tab-tree-drop';
+import { tabAncestors } from '../../shared/tabs/tab-tree';
 import TabFilterControls from './TabFilterControls.vue';
 import { useWorkspace } from '../../stores/workspace';
 import { useDialog } from '../../stores/dialog';
-import { workspaceEditBaseline } from '../../shared/workspace-edits';
+import { workspaceEditBaseline } from '../../shared/workspace/workspace-edits';
 import { rpc } from '../../shared/rpc';
 import { COLORS } from '../../shared/model';
-import { categoryColor, categoryColorStyle, projectColorStyle } from '../../shared/category-colors';
-import { workspaceRows, type WorkspaceScope } from '../../shared/workspace-navigation';
+import {
+  categoryColor,
+  categoryColorStyle,
+  projectColorStyle,
+} from '../../shared/tabs/category-colors';
+import { workspaceRows, type WorkspaceScope } from '../../shared/workspace/workspace-navigation';
 import type { Category, Project, TabRecord, PlanAction } from '../../shared/types';
 
 const emit = defineEmits<{ createProject: []; ai: [ids: string[]] }>();
@@ -76,13 +80,7 @@ watch([scope, projectMode, activeProjectId, projectLayout], async () => {
   const content = scopeContent.value;
   if (!content) return;
   for (const animation of content.getAnimations()) animation.cancel();
-  content.animate(
-    [
-      { opacity: 0.45, transform: 'translateY(3px)' },
-      { opacity: 1, transform: 'translateY(0)' },
-    ],
-    { duration: 140, easing: 'ease-out' },
-  );
+  content.animate([{ opacity: 0.45 }, { opacity: 1 }], { duration: 140, easing: 'ease-out' });
 });
 const selecting = ref(false);
 const dragging = computed({

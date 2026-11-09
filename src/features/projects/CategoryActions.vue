@@ -6,9 +6,9 @@ import UiButton from '../../ui/UiButton.vue';
 import { useWorkspace } from '../../stores/workspace';
 import { useDialog } from '../../stores/dialog';
 import { rpc } from '../../shared/rpc';
-import { workspaceEditBaseline, type WorkspaceEdit } from '../../shared/workspace-edits';
+import { workspaceEditBaseline, type WorkspaceEdit } from '../../shared/workspace/workspace-edits';
 import type { Category } from '../../shared/types';
-import { categoryColor } from '../../shared/category-colors';
+import { categoryColor } from '../../shared/tabs/category-colors';
 const props = defineProps<{ category: Category }>();
 const emit = defineEmits<{ edit: []; changed: [id: string] }>();
 const store = useWorkspace(),

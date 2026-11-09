@@ -1,24 +1,24 @@
 import { z } from 'zod';
 import * as db from './db';
 import * as engine from './engine';
-import { assistantThreadSchema } from '../shared/assistant';
-import { conversationBranch } from '../shared/assistant-branches';
+import { assistantThreadSchema } from '../shared/assistant/assistant';
+import { conversationBranch } from '../shared/assistant/assistant-branches';
 import {
   assistantArtifactSchema,
   actionCapabilities,
   type AssistantArtifact,
-} from '../shared/assistant-actions';
+} from '../shared/assistant/assistant-actions';
 import {
   permissionPolicySchema,
   permissionReviewSchema,
   type PermissionReview,
   type PermissionPolicy,
-} from '../shared/permission-review';
-import { workspaceEditBaseline, workspaceEditRecordIds } from '../shared/workspace-edits';
+} from '../shared/assistant/permission-review';
+import { workspaceEditBaseline, workspaceEditRecordIds } from '../shared/workspace/workspace-edits';
 import { validatePlan } from '../shared/model';
-import { tagHash } from '../shared/tag-analysis';
-import { reviewPermission, PermissionReviewUnavailable } from '../ai/permission-review';
-import { runModelInference } from '../ai/inference-lane';
+import { tagHash } from '../shared/organization/tag-analysis';
+import { reviewPermission, PermissionReviewUnavailable } from '../ai/inference/permission-review';
+import { runModelInference } from '../ai/inference/inference-lane';
 const policiesKey = 'assistantPermissionPolicies';
 const active = new Map<string, { threadId: string; controller: AbortController }>();
 export const reviewSummary = ({

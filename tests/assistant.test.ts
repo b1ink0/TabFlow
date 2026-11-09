@@ -1,11 +1,11 @@
-import { conversationBranch, answerBranches } from '../src/shared/assistant-branches';
+import { conversationBranch, answerBranches } from '../src/shared/assistant/assistant-branches';
 import 'fake-indexeddb/auto';
 import { beforeEach, afterEach, describe, expect, it, vi } from 'vitest';
 import { createPinia, setActivePinia } from 'pinia';
 import { database } from '../src/core/db';
 import { useAssistantConversations } from '../src/stores/assistant';
-import { compactConversation } from '../src/ai/conversation-context';
-import { canRetry, retryTurn } from '../src/shared/assistant-retry';
+import { compactConversation } from '../src/ai/context/conversation-context';
+import { canRetry, retryTurn } from '../src/shared/assistant/assistant-retry';
 import type { CollectionAnalysis } from '../src/shared/types';
 
 beforeEach(async () => {
@@ -27,6 +27,35 @@ beforeEach(async () => {
 });
 afterEach(() => vi.unstubAllGlobals());
 describe('local assistant continuity', () => {
+  it('saves long browser URLs in evidence and reloads the conversation without altering identity', async () => {
+    const chat = useAssistantConversations();
+    await chat.create(null);
+    const id = await chat.append('assistant', 'Reading the selected tabs');
+    const url = `https://example.test/reference?q=${'a'.repeat(12000)}`;
+    await chat.updateMessage(id, {
+      sources: [{ recordId: 'long-reference', title: 'Reference', url, capturedAt: null }],
+    });
+    await chat.append('user', 'Continue organizing');
+    const threadId = chat.activeId;
+    setActivePinia(createPinia());
+    const reopened = useAssistantConversations();
+    await reopened.load();
+    await reopened.select(threadId);
+    expect(reopened.current!.messages[0]!.sources[0]!.url).toBe(url);
+    expect(reopened.current!.messages[1]!.content).toBe('Continue organizing');
+  });
+  it('rejects a malformed progress checkpoint before mutating the saved or live message', async () => {
+    const chat = useAssistantConversations();
+    await chat.create(null);
+    const id = await chat.append('assistant', 'Previous valid answer');
+    const before = JSON.stringify(chat.current);
+    await expect(chat.updateMessage(id, { content: 'x'.repeat(100001) })).rejects.toThrow(
+      'previous message was retained',
+    );
+    expect(JSON.stringify(chat.current)).toBe(before);
+    await chat.append('user', 'Try a different request');
+    expect(chat.current!.messages.at(-1)!.content).toBe('Try a different request');
+  });
   it('finds paged chat summaries by their current project name without loading message bodies', async () => {
     await database.projects.put({
       id: 'search-project',

@@ -4,7 +4,7 @@ import {
   renameDraftProject,
   renameDraftCategory,
   mergeDraftProjects,
-} from '../src/shared/collection';
+} from '../src/shared/organization/collection';
 import { newRecord, validateCollectionDraft } from '../src/shared/model';
 import type { AppState, CollectionDraft, CollectionProposal, TabRecord } from '../src/shared/types';
 

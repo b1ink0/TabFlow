@@ -92,6 +92,38 @@ export function stubFetch(
         { headers: { 'content-type': 'application/json' } },
       );
     }
-    return provider(input, init);
+    const response = await provider(input, init);
+    if (!response.headers.get('content-type')?.includes('application/json')) return response;
+    // Chat Completions requires finish_reason. Older fixtures omitted it because
+    // the previous runner inferred continuation from tool_calls alone.
+    const completion = z
+      .object({
+        choices: z.array(
+          z
+            .object({
+              finish_reason: z.string().nullable().optional(),
+              message: z.object({ tool_calls: z.array(z.unknown()).optional() }).passthrough(),
+            })
+            .passthrough(),
+        ),
+      })
+      .passthrough()
+      .safeParse(await response.clone().json());
+    if (
+      !completion.success ||
+      completion.data.choices.every((entry) => entry.finish_reason != null)
+    )
+      return response;
+    return new Response(
+      JSON.stringify({
+        ...completion.data,
+        choices: completion.data.choices.map((entry) => ({
+          ...entry,
+          finish_reason:
+            entry.finish_reason ?? (entry.message.tool_calls?.length ? 'tool_calls' : 'stop'),
+        })),
+      }),
+      { status: response.status, headers: response.headers },
+    );
   });
 }

@@ -7,7 +7,7 @@ import ExternalClassificationDialog from './ExternalClassificationDialog.vue';
 import { useWorkspace } from '../../stores/workspace';
 import { useDialog } from '../../stores/dialog';
 import { rpc } from '../../shared/rpc';
-import { workspaceRows } from '../../shared/workspace-navigation';
+import { workspaceRows } from '../../shared/workspace/workspace-navigation';
 import type { Project } from '../../shared/types';
 const props = defineProps<{ project: Project; label?: string; onAddCategory?: () => void }>();
 const store = useWorkspace(),

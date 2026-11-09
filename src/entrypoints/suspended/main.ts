@@ -1,7 +1,7 @@
-import { suspendedInfo } from '../../shared/urls';
+import { suspendedInfo } from '../../shared/tabs/urls';
 import { rpc } from '../../shared/rpc';
 import { errorMessage } from '../../shared/types';
-import { validFavicon } from '../../shared/favicon';
+import { validFavicon } from '../../shared/tabs/favicon';
 import '../../assets/suspended.css';
 const info = suspendedInfo(location.href, chrome.runtime.getURL('').replace(/\/$/, ''));
 const title = document.getElementById('title')!,

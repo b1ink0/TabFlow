@@ -1,5 +1,5 @@
 import * as db from './db';
-import { matchesSiteList } from '../shared/suspension-policy';
+import { matchesSiteList } from '../shared/tabs/suspension-policy';
 import type { Settings, TabRecord } from '../shared/types';
 
 let lastCapture = 0;

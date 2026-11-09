@@ -1,15 +1,15 @@
 import { stubFetch } from './taxonomy-fixture';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { z } from 'zod';
-import { generateCollectionDraft } from '../src/ai/client';
-import { recordInference, ReceiptPersistenceError } from '../src/ai/inference-receipt';
+import { generateCollectionDraft } from '../src/ai/workflows/generation';
+import { recordInference, ReceiptPersistenceError } from '../src/ai/inference/inference-receipt';
 import { DEFAULTS, newRecord } from '../src/shared/model';
 import {
   classificationEvidence,
   categoryChoices,
   CLASSIFICATION_CONTRACT,
-} from '../src/ai/classification';
-import { collectionAnalysisSchema } from '../src/shared/collection-analysis';
+} from '../src/ai/workflows/classification';
+import { collectionAnalysisSchema } from '../src/shared/organization/collection-analysis';
 import type { AppState, CollectionAnalysis } from '../src/shared/types';
 const record = {
   ...newRecord('https://github.com/fixture/cedar-notes'),

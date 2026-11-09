@@ -6,12 +6,12 @@ import {
   mergeProposalDrafts,
   mergeDraftCategories,
   removeDraftStructure,
-} from '../src/shared/proposal-edits';
+} from '../src/shared/organization/proposal-edits';
 import { validateCollectionDraft, newRecord } from '../src/shared/model';
 import type { CollectionProposal } from '../src/shared/types';
 import { reactive } from 'vue';
-import { resolveTagReview } from '../src/shared/tag-analysis';
-import { proposalExport, proposalImport } from '../src/shared/proposal-review';
+import { resolveTagReview } from '../src/shared/organization/tag-analysis';
+import { proposalExport, proposalImport } from '../src/shared/organization/proposal-review';
 
 const records = Array.from({ length: 335 }, (_, i) => ({
   ...newRecord('https://example.test/duplicate', `occ-${i}`),

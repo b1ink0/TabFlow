@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { tabDragIndex } from '../src/shared/tab-tree-drag';
+import { tabDragIndex } from '../src/shared/tabs/tab-tree-drag';
 import { newRecord } from '../src/shared/model';
 
 describe('cached drag-session target checks', () => {

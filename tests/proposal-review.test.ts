@@ -1,6 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import { newRecord } from '../src/shared/model';
-import { proposalExport, proposalImport, safeProposalUrl } from '../src/shared/proposal-review';
+import {
+  proposalExport,
+  proposalImport,
+  safeProposalUrl,
+} from '../src/shared/organization/proposal-review';
 import type { CollectionDraft } from '../src/shared/types';
 
 describe('proposal export', () => {

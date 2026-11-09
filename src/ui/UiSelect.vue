@@ -2,7 +2,7 @@
 import USelectMenu from '@nuxt/ui/components/SelectMenu.vue';
 import { PhSortAscending as SortAscending } from '@phosphor-icons/vue';
 import { useAttrs, computed, ref } from 'vue';
-import { cn } from '../shared/cn';
+import { cn } from '../shared/utils/cn';
 import type { ClassValue } from 'clsx';
 defineOptions({ inheritAttrs: false });
 const attrs = useAttrs();

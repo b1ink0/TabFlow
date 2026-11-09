@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { searchTabIds } from '../src/shared/tab-search';
+import { searchTabIds } from '../src/shared/tabs/tab-search';
 import { newRecord } from '../src/shared/model';
 describe('bounded local tab search', () => {
   it('yields between chunks, preserves duplicate occurrences and includes semantic labels', async () => {

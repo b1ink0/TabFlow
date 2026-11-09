@@ -3,9 +3,13 @@ import { useEventListener } from '@vueuse/core';
 import type { MoveEvent, DraggableEvent } from 'vue-draggable-plus';
 import { useWorkspace } from '../../stores/workspace';
 import { rpc } from '../../shared/rpc';
-import { workspaceEditBaseline } from '../../shared/workspace-edits';
-import { tabTreeDrop, tabTreeSectionDrop, type TreeDropPosition } from '../../shared/tab-tree-drop';
-import { tabDragIndex } from '../../shared/tab-tree-drag';
+import { workspaceEditBaseline } from '../../shared/workspace/workspace-edits';
+import {
+  tabTreeDrop,
+  tabTreeSectionDrop,
+  type TreeDropPosition,
+} from '../../shared/tabs/tab-tree-drop';
+import { tabDragIndex } from '../../shared/tabs/tab-tree-drag';
 import { dragLift, type DragPoint } from '../../ui/drag-lift';
 import { dragMarker } from '../../ui/drag-marker';
 

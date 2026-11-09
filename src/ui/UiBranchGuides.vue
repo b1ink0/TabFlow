@@ -157,12 +157,14 @@ onUnmounted(() => cancelAnimationFrame(frame));
     <g
       v-for="family in families"
       :key="family.id"
+      class="transition-opacity duration-150 ease-out motion-reduce:transition-none"
       :opacity="highlighted.has(family.id) ? 1 : 'var(--tree-guide-opacity)'"
       :style="{ color: 'var(--tree-guide-color)' }"
     >
       <path
         v-for="path in family.children"
         :key="path.id"
+        class="transition-[stroke] duration-150 ease-out motion-reduce:transition-none"
         :data-child-id="path.id"
         :data-parent-id="path.parentId"
         :d="path.d"

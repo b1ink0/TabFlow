@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { allowsProposalTagShortcut } from '../src/ai/workflow-intent';
+import { allowsProposalTagShortcut } from '../src/ai/workflows/workflow-intent';
 describe('proposal workflow intent', () => {
   it('never turns structural edits into automatic tagging even after a router false positive', () => {
     expect(

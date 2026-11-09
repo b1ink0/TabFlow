@@ -3,7 +3,7 @@ import UiCollapsible from '../../ui/UiCollapsible.vue';
 import { ref } from 'vue';
 import UiButton from '../../ui/UiButton.vue';
 import { PhX } from '@phosphor-icons/vue';
-import type { TagReview } from '../../shared/tag-analysis';
+import type { TagReview } from '../../shared/organization/tag-analysis';
 defineProps<{ items: TagReview[number]['tags']; selected?: string[] }>();
 defineEmits<{ include: [name: string]; dismiss: [name: string]; remove: [name: string] }>();
 const open = ref(false);

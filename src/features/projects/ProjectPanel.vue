@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue';
 import UiReorderList from '../../ui/UiReorderList.vue';
-import type { ReorderEvent } from '../../shared/reorder';
+import type { ReorderEvent } from '../../shared/utils/reorder';
 import { useReorderGesture, droppedOrder } from '../workspace/useReorderGesture';
 import { useStorage } from '@vueuse/core';
 import {
@@ -11,7 +11,7 @@ import {
   PhSpinnerGap as LoaderCircle,
 } from '@phosphor-icons/vue';
 import type { Category, CollectionAnalysis, Project } from '../../shared/types';
-import { workspaceEditBaseline } from '../../shared/workspace-edits';
+import { workspaceEditBaseline } from '../../shared/workspace/workspace-edits';
 import { rpc } from '../../shared/rpc';
 import { useWorkspace } from '../../stores/workspace';
 import { useDialog } from '../../stores/dialog';
@@ -21,15 +21,15 @@ import UiSelect from '../../ui/UiSelect.vue';
 import UiCheckbox from '../../ui/UiCheckbox.vue';
 import ProvenanceLabel from '../../ui/ProvenanceLabel.vue';
 import TagSuggestionReview from './TagSuggestionReview.vue';
-import { requestModelAccess } from '../../ai/access';
-import { runModelInference } from '../../ai/inference-lane';
+import { requestModelAccess } from '../../ai/providers/access';
+import { runModelInference } from '../../ai/inference/inference-lane';
 import { useTabSearch } from '../tabs/useTabSearch';
 import CategoryActions from './CategoryActions.vue';
 import TabRow from '../tabs/TabRow.vue';
 import UiLoadMore from '../../ui/UiLoadMore.vue';
 import UiBranchGuides from '../../ui/UiBranchGuides.vue';
 import UiSearchInput from '../../ui/UiSearchInput.vue';
-import { workspaceRows } from '../../shared/workspace-navigation';
+import { workspaceRows } from '../../shared/workspace/workspace-navigation';
 
 const props = withDefaults(defineProps<{ project: Project; section?: string }>(), {
   section: 'tabs',
@@ -270,7 +270,7 @@ async function draftOrganization() {
           ? ['decision']
           : ['generative', 'decision'],
     );
-    const { generateOrganizationDraft } = await import('../../ai/client');
+    const { generateOrganizationDraft } = await import('../../ai/workflows/generation');
     const draft = await runModelInference(
       () =>
         generateOrganizationDraft(store.app!, props.project, scope, {

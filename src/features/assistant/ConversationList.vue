@@ -12,8 +12,8 @@ import UiSearchInput from '../../ui/UiSearchInput.vue';
 import UiDisclosure from '../../ui/UiDisclosure.vue';
 import UiScrollArea from '../../ui/UiScrollArea.vue';
 import UiLoadMore from '../../ui/UiLoadMore.vue';
-import { cn } from '../../shared/cn';
-import type { AssistantThread } from '../../shared/assistant';
+import { cn } from '../../shared/utils/cn';
+import type { AssistantThread } from '../../shared/assistant/assistant';
 
 const props = defineProps<{
   threads: AssistantThread[];

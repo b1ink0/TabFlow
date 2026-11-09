@@ -3,7 +3,7 @@ import UiDataBlock from '../../ui/UiDataBlock.vue';
 import { computed } from 'vue';
 import { useNow, useIntervalFn } from '@vueuse/core';
 import UChatTool from '@nuxt/ui/components/ChatTool.vue';
-import type { AssistantToolEvent } from '../../shared/assistant';
+import type { AssistantToolEvent } from '../../shared/assistant/assistant';
 
 const props = defineProps<{ events: AssistantToolEvent[]; running?: boolean }>();
 const now = useNow({ scheduler: (callback) => useIntervalFn(callback, 1000) });

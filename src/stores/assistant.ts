@@ -8,9 +8,9 @@ import {
   assistantMessageSchema,
   type AssistantMessage,
   type AssistantThread,
-} from '../shared/assistant';
-import { branchTip } from '../shared/assistant-branches';
-import { canRetry } from '../shared/assistant-retry';
+} from '../shared/assistant/assistant';
+import { branchTip } from '../shared/assistant/assistant-branches';
+import { canRetry } from '../shared/assistant/assistant-retry';
 
 export const useAssistantConversations = defineStore('assistant-conversations', () => {
   const threads = ref<AssistantThread[]>([]);
@@ -148,6 +148,18 @@ export const useAssistantConversations = defineStore('assistant-conversations', 
         createdAt: data.event?.createdAt || Date.now(),
       });
     });
+  }
+  async function updateMessage(id: string, patch: Partial<AssistantMessage>) {
+    const message = current.value?.messages.find((item) => item.id === id);
+    if (!message) throw new Error('Conversation message is no longer available.');
+    const next = assistantMessageSchema.safeParse({ ...message, ...patch });
+    if (!next.success)
+      throw new Error(
+        'Could not save assistant progress because it contained invalid conversation data. The previous message was retained.',
+        { cause: next.error },
+      );
+    Object.assign(message, next.data);
+    await save();
   }
   async function create(projectId: string | null) {
     const timestamp = Date.now();
@@ -454,6 +466,7 @@ export const useAssistantConversations = defineStore('assistant-conversations', 
     connectCollectionAnalysis,
     refreshRunningThread,
     appendAudit,
+    updateMessage,
     threads,
     current,
     activeId,

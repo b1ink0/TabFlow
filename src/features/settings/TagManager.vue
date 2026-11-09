@@ -6,7 +6,7 @@ import UiSearchInput from '../../ui/UiSearchInput.vue';
 import { useWorkspace } from '../../stores/workspace';
 import { useDialog } from '../../stores/dialog';
 import { rpc } from '../../shared/rpc';
-import { workspaceEditBaseline, type WorkspaceEdit } from '../../shared/workspace-edits';
+import { workspaceEditBaseline, type WorkspaceEdit } from '../../shared/workspace/workspace-edits';
 const store = useWorkspace(),
   dialog = useDialog();
 const query = ref(''),

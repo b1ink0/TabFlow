@@ -29,6 +29,7 @@
     "lint:fix": "eslint . --fix"
   },
   "dependencies": {
+    "@ai-sdk/openai-compatible": "3.0.87",
     "@fontsource-variable/inter": "5.3.0",
     "@iconify-json/ph": "1.2.2",
     "@nuxt/ui": "4.11.3",
@@ -36,10 +37,10 @@
     "@tailwindcss/vite": "4.3.3",
     "@typesafe-ai/sdk": "0.6.0",
     "@vueuse/core": "15.0.0",
+    "ai": "7.0.165",
     "clsx": "2.1.1",
     "dexie": "4.4.6",
     "markstream-vue": "2.0.19",
-    "openai": "7.30.1",
     "pinia": "4.0.3",
     "reka-ui": "2.10.5",
     "tailwind-merge": "3.7.0",

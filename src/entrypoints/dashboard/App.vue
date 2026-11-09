@@ -21,7 +21,7 @@ import USplitter from '@nuxt/ui/components/Splitter.vue';
 import type { ComponentExposed } from 'vue-component-type-helpers';
 import UiButton from '../../ui/UiButton.vue';
 import UiSelect from '../../ui/UiSelect.vue';
-import { projectColorStyle } from '../../shared/category-colors';
+import { projectColorStyle } from '../../shared/tabs/category-colors';
 import UiLoading from '../../ui/UiLoading.vue';
 import UiScrollArea from '../../ui/UiScrollArea.vue';
 import AppDialog from '../../ui/AppDialog.vue';
@@ -32,22 +32,22 @@ import { navigation } from '../../features/workspace/navigation';
 const TabsView = defineAsyncComponent({
   loader: () => import('../../features/tabs/TabsView.vue'),
   loadingComponent: UiLoading,
-  delay: 120,
+  delay: 0,
 });
 const SidePanelWorkspace = defineAsyncComponent({
   loader: () => import('../../features/tabs/SidePanelWorkspace.vue'),
   loadingComponent: UiLoading,
-  delay: 120,
+  delay: 0,
 });
 const ReviewView = defineAsyncComponent({
   loader: () => import('../../features/review/ReviewView.vue'),
   loadingComponent: UiLoading,
-  delay: 120,
+  delay: 0,
 });
 const ProjectsView = defineAsyncComponent({
   loader: () => import('../../features/projects/ProjectsView.vue'),
   loadingComponent: UiLoading,
-  delay: 120,
+  delay: 0,
 });
 const ProjectActions = defineAsyncComponent(
   () => import('../../features/projects/ProjectActions.vue'),
@@ -55,39 +55,39 @@ const ProjectActions = defineAsyncComponent(
 const AssistantPanel = defineAsyncComponent({
   loader: () => import('../../features/assistant/AssistantPanel.vue'),
   loadingComponent: UiLoading,
-  delay: 120,
+  delay: 0,
 });
 const SettingsPanel = defineAsyncComponent({
   loader: () => import('../../features/settings/SettingsPanel.vue'),
   loadingComponent: UiLoading,
-  delay: 120,
+  delay: 0,
 });
 const HistoryPanel = defineAsyncComponent({
   loader: () => import('../../features/history/HistoryPanel.vue'),
   loadingComponent: UiLoading,
-  delay: 120,
+  delay: 0,
 });
 const SavedSessionPanel = defineAsyncComponent({
   loader: () => import('../../features/history/SavedSessionPanel.vue'),
   loadingComponent: UiLoading,
-  delay: 120,
+  delay: 0,
 });
 const UpdateView = defineAsyncComponent({
   loader: () => import('../../features/updates/UpdateView.vue'),
   loadingComponent: UiLoading,
-  delay: 120,
+  delay: 0,
 });
 const TodayPanel = defineAsyncComponent({
   loader: () => import('../../features/today/TodayPanel.vue'),
   loadingComponent: UiLoading,
-  delay: 120,
+  delay: 0,
 });
 import { useWorkspace } from '../../stores/workspace';
 import { useDialog } from '../../stores/dialog';
 import { rpc } from '../../shared/rpc';
-import { workspaceIntentSchema } from '../../shared/workspace-intent';
-import { cn } from '../../shared/cn';
-import { runModelInference } from '../../ai/inference-lane';
+import { workspaceIntentSchema } from '../../shared/workspace/workspace-intent';
+import { cn } from '../../shared/utils/cn';
+import { runModelInference } from '../../ai/inference/inference-lane';
 import { migrationProgressSchema, updateProgressSchema } from '../../shared/model';
 const store = useWorkspace(),
   dialog = useDialog();
@@ -185,7 +185,7 @@ const descriptions: Record<string, string> = {
   update: 'Install new code while keeping your browser workspace in place.',
 };
 const description = computed(() =>
-  store.view === 'projects' && store.activeProject
+  !store.app || (store.view === 'projects' && store.activeProject)
     ? undefined
     : store.view === 'tabs'
       ? store.records.length +
@@ -350,7 +350,7 @@ async function runOrganizationQueue() {
       try {
         await store.refresh();
         if (!store.app) throw new Error('Workspace is unavailable.');
-        const { generateCollectionDraft } = await import('../../ai/client');
+        const { generateCollectionDraft } = await import('../../ai/workflows/generation');
         const analysisId = `maintenance:${jobs[0]!.id}`;
         const draft = await runModelInference(
           () =>
@@ -426,7 +426,7 @@ async function runOrganizationQueue() {
     const claimed = await rpc('claimOrganizationJob', { runnerId: organizationRunnerId });
     if (!claimed) return;
     try {
-      const { generateOrganizationDraft } = await import('../../ai/client');
+      const { generateOrganizationDraft } = await import('../../ai/workflows/generation');
       const draft = await runModelInference(
         () =>
           generateOrganizationDraft(store.app!, claimed.project, [claimed.record], {
@@ -709,12 +709,29 @@ useIntervalFn(() => {
               /></UiButton>
             </WorkspaceHeader>
             <BrowserWorkProgress />
+            <div
+              v-if="!store.app"
+              class="flex min-h-0 flex-1 flex-col items-center justify-center gap-3 p-4"
+              :aria-busy="!store.loadError"
+            >
+              <template v-if="store.loadError">
+                <p role="alert" class="text-sm text-secondary">Could not load your workspace.</p>
+                <UiButton size="small" @click="store.run(store.refresh)"
+                  >Retry loading workspace</UiButton
+                >
+              </template>
+              <template v-else>
+                <UiLoading compact />
+              </template>
+            </div>
             <component
               :is="store.view === 'settings' ? 'main' : UiScrollArea"
+              v-else
               as="main"
               label="Workspace content"
+              viewport-class="[&>div]:flex! [&>div]:min-h-full [&>div]:flex-col"
               :content-class="
-                cn('flex min-w-0 flex-col gap-3 pb-6', sidePanel ? 'px-3' : 'px-6 sm:px-8')
+                cn('flex min-w-0 flex-1 flex-col gap-3 pb-6', sidePanel ? 'px-3' : 'px-6 sm:px-8')
               "
               :class="
                 cn(
@@ -743,25 +760,27 @@ useIntervalFn(() => {
                 :recovery-only="!sidePanel || store.view !== 'tabs'"
                 :compact="sidePanel"
               />
-              <SidePanelWorkspace
-                v-if="store.view === 'tabs' && sidePanel"
-                @create-project="store.run(addProject)"
-                @ai="aiFor"
-              />
-              <KeepAlive
-                ><TabsView v-if="store.view === 'tabs' && !sidePanel" @ai="aiFor"
-              /></KeepAlive>
-              <TodayPanel v-if="store.view === 'today'" />
-              <KeepAlive
-                ><ProjectsView v-if="store.view === 'projects'" @create="store.run(addProject)"
-              /></KeepAlive>
-              <ReviewView v-if="store.view === 'review'" @migrate="store.run(migrate)" />
-              <KeepAlive><HistoryPanel v-if="store.view === 'timeline'" /></KeepAlive>
-              <SettingsPanel v-if="store.view === 'settings' && store.app" />
-              <KeepAlive><UpdateView v-if="store.view === 'update'" /></KeepAlive>
+              <div data-workspace-view class="flex min-h-0 min-w-0 flex-1 flex-col gap-3">
+                <SidePanelWorkspace
+                  v-if="store.view === 'tabs' && sidePanel"
+                  @create-project="store.run(addProject)"
+                  @ai="aiFor"
+                />
+                <KeepAlive
+                  ><TabsView v-if="store.view === 'tabs' && !sidePanel" @ai="aiFor"
+                /></KeepAlive>
+                <TodayPanel v-if="store.view === 'today'" />
+                <KeepAlive
+                  ><ProjectsView v-if="store.view === 'projects'" @create="store.run(addProject)"
+                /></KeepAlive>
+                <ReviewView v-if="store.view === 'review'" @migrate="store.run(migrate)" />
+                <KeepAlive><HistoryPanel v-if="store.view === 'timeline'" /></KeepAlive>
+                <SettingsPanel v-if="store.view === 'settings' && store.app" />
+                <KeepAlive><UpdateView v-if="store.view === 'update'" /></KeepAlive>
+              </div>
             </component>
             <SavedSessionPanel
-              v-if="sidePanel && store.view === 'tabs'"
+              v-if="store.app && sidePanel && store.view === 'tabs'"
               compact
               footer
               @create-project="store.run(addProject)"

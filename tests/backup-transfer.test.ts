@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { BackupTransfers } from '../src/core/backup-transfer';
-import { BACKUP_CHUNK_CHARACTERS, backupTextChunk } from '../src/shared/backup-transfer';
+import { BACKUP_CHUNK_CHARACTERS, backupTextChunk } from '../src/shared/backup/backup-transfer';
 
 describe('large backup transport', () => {
   it('round-trips a backup beyond the runtime message limit with bounded Unicode-safe messages', async () => {

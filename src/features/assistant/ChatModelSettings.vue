@@ -94,7 +94,8 @@ async function discover() {
       !(await chrome.permissions.request(permission))
     )
       throw Error('Model server access was declined.');
-    const { generativeModels, smallModels, decisionModels } = await import('../../ai/client');
+    const { generativeModels, smallModels, decisionModels } =
+      await import('../../ai/providers/models');
     const list =
       selectedRole === 'generative'
         ? generativeModels

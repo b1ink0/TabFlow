@@ -1,18 +1,23 @@
 import 'fake-indexeddb/auto';
-import { assistantThreadSchema, assistantMessageSchema } from '../src/shared/assistant';
-import { skipFailedCollectionBatch } from '../src/shared/collection-analysis';
+import { assistantThreadSchema, assistantMessageSchema } from '../src/shared/assistant/assistant';
+import { skipFailedCollectionBatch } from '../src/shared/organization/collection-analysis';
 import { listProposalRevisions, restoreProposalRevision } from '../src/core/proposal-history';
 import { assistantPortableSchema } from '../src/core/assistant-portable';
-import { tagSavedProposal } from '../src/ai/proposal-tagging';
-import type { AssistantArtifact } from '../src/shared/assistant-actions';
-import { tagEvidenceKey, tagHash, tagResultId, type TagAnalysis } from '../src/shared/tag-analysis';
+import { tagSavedProposal } from '../src/ai/workflows/proposal-tagging';
+import type { AssistantArtifact } from '../src/shared/assistant/assistant-actions';
+import {
+  tagEvidenceKey,
+  tagHash,
+  tagResultId,
+  type TagAnalysis,
+} from '../src/shared/organization/tag-analysis';
 import { readFileSync } from 'node:fs';
 import { describe, it, expect, vi, beforeAll, beforeEach, afterEach } from 'vitest';
 import type { PageContent } from '../src/shared/types';
 import { database, get as getStoredEntity } from '../src/core/db';
 import { DEFAULTS, importSnapshot, newRecord } from '../src/shared/model';
-import { nativeGroupActions } from '../src/shared/collection';
-import { workspaceEditBaseline, type WorkspaceEdit } from '../src/shared/workspace-edits';
+import { nativeGroupActions } from '../src/shared/organization/collection';
+import { workspaceEditBaseline, type WorkspaceEdit } from '../src/shared/workspace/workspace-edits';
 import {
   captureTabPreview,
   currentTabPreview,

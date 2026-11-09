@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { onMounted, onUnmounted, ref } from 'vue';
 import { ScrollAreaRoot, ScrollAreaViewport, ScrollAreaScrollbar, ScrollAreaThumb } from 'reka-ui';
-import { cn } from '../shared/cn';
+import { cn } from '../shared/utils/cn';
 import { vScrollFade } from './scroll-fade';
 const props = withDefaults(
   defineProps<{

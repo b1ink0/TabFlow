@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { onBeforeUnmount, ref } from 'vue';
 import { useEventListener } from '@vueuse/core';
-import type { ReorderEvent } from '../shared/reorder';
+import type { ReorderEvent } from '../shared/utils/reorder';
 import { dragLift } from './drag-lift';
 import { dragMarker } from './drag-marker';
 const props = defineProps<{ draggable: string; handle: string; disabled?: boolean }>();

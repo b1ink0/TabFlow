@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { runModelInference } from '../src/ai/inference-lane';
+import { runModelInference } from '../src/ai/inference/inference-lane';
 
 afterEach(() => vi.unstubAllGlobals());
 

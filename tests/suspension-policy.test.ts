@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { matchesSiteList, suspensionBlock } from '../src/shared/suspension-policy';
+import { matchesSiteList, suspensionBlock } from '../src/shared/tabs/suspension-policy';
 import { DEFAULTS, newRecord } from '../src/shared/model';
 describe('site suspension policy', () => {
   it('matches exact domains and subdomains, never suffix lookalikes', () => {

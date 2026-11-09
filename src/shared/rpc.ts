@@ -58,32 +58,32 @@ export interface RpcMap {
   };
   permissionPolicy: {
     payload: { threadId: string };
-    response: import('./permission-review').PermissionPolicy;
+    response: import('./assistant/permission-review').PermissionPolicy;
   };
   setPermissionPolicy: {
     payload: { threadId: string; mode: 'ask' | 'review' | 'all' };
-    response: import('./permission-review').PermissionPolicy;
+    response: import('./assistant/permission-review').PermissionPolicy;
   };
   preparePermissionReview: {
     payload: {
       threadId: string;
       messageId: string;
-      artifact: import('./assistant-actions').AssistantArtifact;
+      artifact: import('./assistant/assistant-actions').AssistantArtifact;
       oneOff: boolean;
     };
-    response: import('./permission-review').PermissionReviewSummary;
+    response: import('./assistant/permission-review').PermissionReviewSummary;
   };
   resolvePermissionReview: {
     payload: { id: string };
-    response: import('./permission-review').PermissionReviewSummary;
+    response: import('./assistant/permission-review').PermissionReviewSummary;
   };
   listPermissionReviews: {
     payload: { messageId: string };
-    response: import('./permission-review').PermissionReviewSummary[];
+    response: import('./assistant/permission-review').PermissionReviewSummary[];
   };
   permissionReviewDetails: {
     payload: { id: string };
-    response: import('./permission-review').PermissionReview | undefined;
+    response: import('./assistant/permission-review').PermissionReview | undefined;
   };
 
   tabCommand: {
@@ -97,41 +97,47 @@ export interface RpcMap {
   redo: { payload: { id: string }; response: Operation };
   redoAssistantChange: {
     payload: { id: string };
-    response: import('./assistant-actions').AssistantChange;
+    response: import('./assistant/assistant-actions').AssistantChange;
   };
 
   executeAssistantAction: {
-    payload: import('./assistant-actions').AssistantExecution;
-    response: import('./assistant-actions').AssistantChange;
+    payload: import('./assistant/assistant-actions').AssistantExecution;
+    response: import('./assistant/assistant-actions').AssistantChange;
   };
   denyAssistantAction: {
-    payload: import('./assistant-actions').AssistantExecution;
-    response: import('./assistant-actions').AssistantChange;
+    payload: import('./assistant/assistant-actions').AssistantExecution;
+    response: import('./assistant/assistant-actions').AssistantChange;
   };
   undoAssistantChange: {
     payload: { id: string };
-    response: import('./assistant-actions').AssistantChange;
+    response: import('./assistant/assistant-actions').AssistantChange;
   };
   assistantChangeDetails: {
     payload: { id: string };
-    response: import('./assistant-actions').AssistantChange | undefined;
+    response: import('./assistant/assistant-actions').AssistantChange | undefined;
   };
   listAssistantChanges: {
     payload: { messageId?: string; offset: number };
-    response: import('./assistant-actions').AssistantChange[];
+    response: import('./assistant/assistant-actions').AssistantChange[];
   };
   revokeAssistantApprovals: { payload: { threadId?: string }; response: void };
   executeWorkspaceEdit: {
-    payload: import('./workspace-edits').WorkspaceEditDraft;
-    response: import('./assistant-actions').AssistantChange;
+    payload: import('./workspace/workspace-edits').WorkspaceEditDraft;
+    response: import('./assistant/assistant-actions').AssistantChange;
   };
-  applyWorkspaceEdits: { payload: import('./workspace-edits').WorkspaceEditDraft; response: void };
+  applyWorkspaceEdits: {
+    payload: import('./workspace/workspace-edits').WorkspaceEditDraft;
+    response: void;
+  };
   listTagAnalyses: {
     payload: { analysisId: string };
-    response: import('./tag-analysis').TagAnalysis[];
+    response: import('./organization/tag-analysis').TagAnalysis[];
   };
-  saveTagAnalysis: { payload: import('./tag-analysis').TagAnalysis; response: void };
-  saveInferenceReceipt: { payload: import('./inference-receipt').InferenceReceipt; response: void };
+  saveTagAnalysis: { payload: import('./organization/tag-analysis').TagAnalysis; response: void };
+  saveInferenceReceipt: {
+    payload: import('./inference/inference-receipt').InferenceReceipt;
+    response: void;
+  };
   getActionAnalysis: { payload: { id: string }; response: ActionAnalysis | undefined };
   listActionAnalyses: { payload: undefined; response: ActionAnalysis[] };
   saveActionAnalysis: { payload: ActionAnalysis; response: ActionAnalysis };

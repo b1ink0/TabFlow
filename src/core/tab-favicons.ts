@@ -1,4 +1,4 @@
-import { validFavicon } from '../shared/favicon';
+import { validFavicon } from '../shared/tabs/favicon';
 
 /** Chromium's local favicon endpoint only: never fetch the original website for an icon. */
 export async function captureSuspendedFavicon(url: string): Promise<string | undefined> {

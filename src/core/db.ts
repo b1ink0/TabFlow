@@ -1,6 +1,6 @@
 import Dexie, { type Table } from 'dexie';
 import type { DatabaseEntities, StoreName } from '../shared/types';
-import { assistantThreadSchema } from '../shared/assistant';
+import { assistantThreadSchema } from '../shared/assistant/assistant';
 
 class TabFlowDatabase extends Dexie {
   assistantThreadSummaries!: Table<DatabaseEntities['assistantThreadSummaries'], string>;

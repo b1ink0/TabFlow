@@ -1,6 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import { newRecord } from '../src/shared/model';
-import { orderTabTreeDrop, tabTreeDrop, tabTreeSectionDrop } from '../src/shared/tab-tree-drop';
+import {
+  orderTabTreeDrop,
+  tabTreeDrop,
+  tabTreeSectionDrop,
+} from '../src/shared/tabs/tab-tree-drop';
 import type { Membership } from '../src/shared/types';
 
 function fixture() {

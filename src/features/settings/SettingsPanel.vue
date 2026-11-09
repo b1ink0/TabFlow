@@ -93,7 +93,7 @@ async function discoverGenerative() {
   discovering.value = true;
   try {
     await grantServer('generative');
-    const { generativeModels } = await import('../../ai/client');
+    const { generativeModels } = await import('../../ai/providers/models');
     generativeModelIds.value = await generativeModels(config.value, AbortSignal.timeout(15000));
     if (!generativeModelIds.value.length)
       throw new Error('No models found. Start your server and load a model.');
@@ -107,7 +107,7 @@ async function discoverDecision() {
   discovering.value = true;
   try {
     await grantServer('decision');
-    const { decisionModels } = await import('../../ai/client');
+    const { decisionModels } = await import('../../ai/providers/models');
     decisionModelIds.value = await decisionModels(config.value, AbortSignal.timeout(15000));
     if (!decisionModelIds.value.length)
       throw new Error('No decision models found at the configured Bud/Jev endpoint.');
@@ -121,7 +121,7 @@ async function discoverSmallModel() {
   discovering.value = true;
   try {
     await grantServer('small');
-    const { smallModels } = await import('../../ai/client');
+    const { smallModels } = await import('../../ai/providers/models');
     smallModelIds.value = await smallModels(config.value, AbortSignal.timeout(15000));
     if (!smallModelIds.value.length)
       throw new Error('No chat models found at the small-model endpoint.');

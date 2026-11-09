@@ -1,9 +1,9 @@
 import * as db from './db';
 import * as engine from './engine';
 import { executeWorkspaceEdit } from './assistant-actions';
-import { workspaceEditBaseline } from '../shared/workspace-edits';
-import { pageURL } from '../shared/urls';
-import type { WorkspaceIntent } from '../shared/workspace-intent';
+import { workspaceEditBaseline } from '../shared/workspace/workspace-edits';
+import { pageURL } from '../shared/tabs/urls';
+import type { WorkspaceIntent } from '../shared/workspace/workspace-intent';
 
 export function nativeContextMenus(
   openDashboard: (view?: string) => Promise<number>,

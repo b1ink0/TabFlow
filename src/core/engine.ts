@@ -1,14 +1,14 @@
 import { z } from 'zod';
 import { version } from '../../package.json';
-import { isNativeNewTabURL } from '../shared/urls';
-import { automaticTabParent, validateTabTree } from '../shared/tab-tree';
+import { isNativeNewTabURL } from '../shared/tabs/urls';
+import { automaticTabParent, validateTabTree } from '../shared/tabs/tab-tree';
 import { saveProposalRevision } from './proposal-history';
 import {
   assistantPortableSchema,
   exportAssistantState,
   importAssistantState,
 } from './assistant-portable';
-import { mergeProposalDrafts } from '../shared/proposal-edits';
+import { mergeProposalDrafts } from '../shared/organization/proposal-edits';
 import {
   resolveTagReview,
   tagAnalysisSchema,
@@ -18,7 +18,7 @@ import {
   canonicalTags,
   tagHash,
   type TagAnalysis,
-} from '../shared/tag-analysis';
+} from '../shared/organization/tag-analysis';
 import type {
   AppState,
   Area,
@@ -48,14 +48,14 @@ import type {
 } from '../shared/types';
 import { errorMessage } from '../shared/types';
 import * as db from './db';
-import { approvalRuleSchema, currentAssistantTrace } from '../shared/assistant-actions';
+import { approvalRuleSchema, currentAssistantTrace } from '../shared/assistant/assistant-actions';
 import {
   workspaceEditDraftSchema,
   workspaceEditBaseline,
   workspaceEditRecordIds,
-} from '../shared/workspace-edits';
+} from '../shared/workspace/workspace-edits';
 import { captureSuspendedFavicon } from './tab-favicons';
-import { validFavicon } from '../shared/favicon';
+import { validFavicon } from '../shared/tabs/favicon';
 import {
   DEFAULTS,
   COLORS,
@@ -77,12 +77,15 @@ import {
   newRecord,
   provenanceSchema,
 } from '../shared/model';
-import { nativeGroupActions } from '../shared/collection';
-import { collectionAnalysisSchema } from '../shared/collection-analysis';
-import { actionAnalysisSchema } from '../shared/action-analysis';
-import { inferenceReceiptSchema, type InferenceReceipt } from '../shared/inference-receipt';
+import { nativeGroupActions } from '../shared/organization/collection';
+import { collectionAnalysisSchema } from '../shared/organization/collection-analysis';
+import { actionAnalysisSchema } from '../shared/workspace/action-analysis';
+import {
+  inferenceReceiptSchema,
+  type InferenceReceipt,
+} from '../shared/inference/inference-receipt';
 import { copyCollectionToProjectWindows, undoCollectionCopies } from './collection-copy';
-import { matchesSiteList, suspensionBlock } from '../shared/suspension-policy';
+import { matchesSiteList, suspensionBlock } from '../shared/tabs/suspension-policy';
 import { captureTabPreview, currentTabPreview, invalidatePreviewCapture } from './tab-previews';
 import { createMigrationCoordinator, migrationProgress } from './suspender-migration';
 import {

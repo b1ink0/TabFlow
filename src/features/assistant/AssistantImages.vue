@@ -6,7 +6,7 @@ import {
   assistantImagesSchema,
   MAX_IMAGE_BYTES,
   type AssistantImage,
-} from '../../shared/assistant-images';
+} from '../../shared/assistant/assistant-images';
 defineProps<{ disabled?: boolean; enabled: boolean; hideButton?: boolean }>();
 const images = defineModel<AssistantImage[]>({ required: true });
 const picker = ref<HTMLInputElement>(),

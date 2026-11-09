@@ -15,6 +15,8 @@ TabFlow is a Chromium Manifest V3 extension built with WXT, Vue and TypeScript. 
 | `src/ai`          | Model adapters, tools, evidence, inference workflows and checkpoints        |
 | `src/providers`   | External integration adapters                                               |
 
+Shared modules are grouped by domain, with pure cross-domain helpers in `src/shared/utils`. AI modules separate `runtime`, `providers`, `tools`, `workflows`, `context` and `inference` responsibilities.
+
 Views send typed RPC requests to the background coordinator. Browser mutations are serialized there, where current identities, permissions and target protections are checked. Metadata operations use database transactions. Zod validates messages, model output and imported data at the boundary.
 
 ## Workspace model
@@ -48,6 +50,8 @@ Bulk organization runs as a resumable pipeline: discovery, taxonomy reconciliati
 Saved proposals are versioned data. Sparse edits and merges validate revisions before saving. Draft preparation is separate from application. Applying a proposal updates semantic memberships. Creating native project windows is a separate copy operation.
 
 ## Assistant actions
+
+The conversation UI calls the `AgentRuntime` contract through a composition entry point. AI SDK Core runs the conversation against the configured OpenAI-compatible endpoint, with streaming, bounded tool steps and cancellation. Conversation tool factories own request scope and prepared artifacts independently of the model runner. A provider-neutral catalog supplies validated tools and discovery. Bulk generation workflows use the same provider layer with explicit output schemas and checkpoints. Constrained System One decisions use their separate protocol. A future service adapter can implement the runtime contract while retaining extension-owned tool validation and approval. No companion service or MCP server is required or exposed by the extension.
 
 Conversation tools expose reads, draft operations and prepared workspace/browser changes. Attachments capture a fixed scope at send time. Tools enforce that scope and validate current targets when executing.
 

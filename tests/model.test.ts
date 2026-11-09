@@ -6,7 +6,7 @@ import {
   DEFAULTS,
   importSnapshot,
 } from '../src/shared/model';
-import { cleanPageLink, makeSuspendedURL, suspendedInfo, pageURL } from '../src/shared/urls';
+import { cleanPageLink, makeSuspendedURL, suspendedInfo, pageURL } from '../src/shared/tabs/urls';
 describe('suspended-page recovery', () => {
   it('removes attribution without dropping functional search parameters or fragments', () => {
     const clean = new URL(

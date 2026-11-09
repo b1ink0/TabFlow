@@ -19,8 +19,8 @@ import { useWorkspace } from '../../stores/workspace';
 import { rpc } from '../../shared/rpc';
 import type { WorkItem } from '../../shared/types';
 import type { CalendarEvent } from '../../shared/types';
-import type { DailyFocusDraft } from '../../ai/client';
-import { runModelInference } from '../../ai/inference-lane';
+import type { DailyFocusDraft } from '../../ai/workflows/contracts';
+import { runModelInference } from '../../ai/inference/inference-lane';
 
 const store = useWorkspace();
 const now = useNow({ scheduler: (callback) => useIntervalFn(callback, 60_000) });
@@ -210,7 +210,7 @@ async function planDay() {
         !(await chrome.permissions.request({ origins: [origin] }))
       )
         throw new Error('Generative model access was declined.');
-      const { generateDailyFocus } = await import('../../ai/client');
+      const { generateDailyFocus } = await import('../../ai/workflows/generation');
       focusDraft.value = await runModelInference(
         () =>
           generateDailyFocus(

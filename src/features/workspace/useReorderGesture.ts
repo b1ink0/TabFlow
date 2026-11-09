@@ -2,8 +2,8 @@ import { useWorkspace } from '../../stores/workspace';
 import { ref } from 'vue';
 import { useEventListener } from '@vueuse/core';
 import { dragLift, type DragPoint } from '../../ui/drag-lift';
-import type { ReorderEvent } from '../../shared/reorder';
-export type { ReorderEvent } from '../../shared/reorder';
+import type { ReorderEvent } from '../../shared/utils/reorder';
+export type { ReorderEvent } from '../../shared/utils/reorder';
 const dragGeometry = new WeakMap<
   HTMLElement,
   { top: number; left: number; rows: { id: string; x: number; y: number }[] }

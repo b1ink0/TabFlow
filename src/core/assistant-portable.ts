@@ -1,20 +1,20 @@
 import { z } from 'zod';
-import { validateTabTree } from '../shared/tab-tree';
-import { isNativeNewTabURL } from '../shared/urls';
+import { validateTabTree } from '../shared/tabs/tab-tree';
+import { isNativeNewTabURL } from '../shared/tabs/urls';
 import Dexie from 'dexie';
 import * as db from './db';
-import { assistantThreadSchema } from '../shared/assistant';
-import { assistantChangeSchema } from '../shared/assistant-actions';
-import { collectionAnalysisSchema } from '../shared/collection-analysis';
-import { actionAnalysisSchema } from '../shared/action-analysis';
+import { assistantThreadSchema } from '../shared/assistant/assistant';
+import { assistantChangeSchema } from '../shared/assistant/assistant-actions';
+import { collectionAnalysisSchema } from '../shared/organization/collection-analysis';
+import { actionAnalysisSchema } from '../shared/workspace/action-analysis';
 import {
   collectionDraftSchema,
   newRecord,
   pageURL,
   validateCollectionDraft,
 } from '../shared/model';
-import { tagAnalysisSchema, tagResultId, tagHash } from '../shared/tag-analysis';
-import { inferenceReceiptSchema } from '../shared/inference-receipt';
+import { tagAnalysisSchema, tagResultId, tagHash } from '../shared/organization/tag-analysis';
+import { inferenceReceiptSchema } from '../shared/inference/inference-receipt';
 import type { CollectionProposal } from '../shared/types';
 
 const savedProposal = collectionDraftSchema.extend({

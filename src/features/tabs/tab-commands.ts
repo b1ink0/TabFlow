@@ -4,9 +4,9 @@ import type { PlanAction, TabRecord } from '../../shared/types';
 import { rpc } from '../../shared/rpc';
 import { useWorkspace } from '../../stores/workspace';
 import { useDialog } from '../../stores/dialog';
-import { cleanPageLink } from '../../shared/urls';
-import { workspaceEditBaseline, type WorkspaceEdit } from '../../shared/workspace-edits';
-import { tabAncestors } from '../../shared/tab-tree';
+import { cleanPageLink } from '../../shared/tabs/urls';
+import { workspaceEditBaseline, type WorkspaceEdit } from '../../shared/workspace/workspace-edits';
+import { tabAncestors } from '../../shared/tabs/tab-tree';
 export function useTabCommands(record: Ref<TabRecord>) {
   const store = useWorkspace();
   const dialog = useDialog();

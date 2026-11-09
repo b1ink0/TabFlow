@@ -4,7 +4,7 @@ import { useTabSearch } from '../src/features/tabs/useTabSearch';
 import { newRecord } from '../src/shared/model';
 
 const search = vi.hoisted(() => vi.fn());
-vi.mock('../src/shared/tab-search', () => ({ searchTabIds: search }));
+vi.mock('../src/shared/tabs/tab-search', () => ({ searchTabIds: search }));
 afterEach(() => vi.useRealTimers());
 
 describe('search refresh lifecycle', () => {

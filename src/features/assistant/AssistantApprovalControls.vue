@@ -4,13 +4,13 @@ import UiButton from '../../ui/UiButton.vue';
 import { PhCaretDown, PhCheck } from '@phosphor-icons/vue';
 import { computed } from 'vue';
 import { useWorkspace } from '../../stores/workspace';
-import { actionPresentation } from '../../shared/action-presentation';
+import { actionPresentation } from '../../shared/workspace/action-presentation';
 import {
   actionCapabilities,
   capabilityLabels,
   type AssistantArtifact,
   type ApprovalMode,
-} from '../../shared/assistant-actions';
+} from '../../shared/assistant/assistant-actions';
 const props = defineProps<{
   artifact: AssistantArtifact;
   disabled?: boolean;

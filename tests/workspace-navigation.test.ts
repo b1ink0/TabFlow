@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { newRecord } from '../src/shared/model';
-import { workspaceRows } from '../src/shared/workspace-navigation';
+import { workspaceRows } from '../src/shared/workspace/workspace-navigation';
 import type { Membership } from '../src/shared/types';
-import { emptyTabFilters, readTabFilters, writeTabFilters } from '../src/shared/tab-filters';
+import { emptyTabFilters, readTabFilters, writeTabFilters } from '../src/shared/tabs/tab-filters';
 
 describe('semantic workspace navigation', () => {
   it('combines independent multi-label tags with semantic scope and retains missing targets in URLs', () => {

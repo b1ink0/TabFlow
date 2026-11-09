@@ -1,32 +1,29 @@
+import { models, generativeModels, decisionModels, smallModels } from '../src/ai/providers/models';
+import { answerWorkQuestion } from '../src/ai/runtime/agent';
 import { stubFetch } from './taxonomy-fixture';
 import { describe, it, expect, vi, afterEach } from 'vitest';
 import { z } from 'zod';
 import {
   generateOrganizationDraft,
   generatePlan,
-  models,
-  generativeModels,
-  decisionModels,
-  smallModels,
   generateDailyFocus,
-  answerWorkQuestion,
   generateCollectionDraft,
-} from '../src/ai/client';
+} from '../src/ai/workflows/generation';
 import { DEFAULTS, newRecord } from '../src/shared/model';
 import {
   context,
   evidenceBatches,
   modelRequestBudget,
   decisionContextRetryBudget,
-} from '../src/ai/context';
+} from '../src/ai/context/context';
 import type {
   AppState,
   CollectionAnalysis,
   CollectionDraft,
   CollectionProposal,
 } from '../src/shared/types';
-import { collectionAnalysisSchema } from '../src/shared/collection-analysis';
-import { actionAnalysisSchema } from '../src/shared/action-analysis';
+import { collectionAnalysisSchema } from '../src/shared/organization/collection-analysis';
+import { actionAnalysisSchema } from '../src/shared/workspace/action-analysis';
 import type { ActionAnalysis } from '../src/shared/types';
 const record = {
   ...newRecord('https://github.com/example-org/atlas_planner'),
@@ -281,7 +278,10 @@ describe('SDK adapters', () => {
         });
       });
       stubFetch('fetch', fetchMock, { tags: false });
-      const tagRows = new Map<string, import('../src/shared/tag-analysis').TagAnalysis>();
+      const tagRows = new Map<
+        string,
+        import('../src/shared/organization/tag-analysis').TagAnalysis
+      >();
       const options = {
         reuseAcceptedTaxonomyOnly: true,
         includeTags: true,
@@ -298,7 +298,7 @@ describe('SDK adapters', () => {
           tags: {
             analysisId: `isolated-${failedStage}`,
             load: async () => [...tagRows.values()],
-            save: async (row: import('../src/shared/tag-analysis').TagAnalysis) => {
+            save: async (row: import('../src/shared/organization/tag-analysis').TagAnalysis) => {
               tagRows.set(row.id, structuredClone(row));
             },
           },
@@ -594,7 +594,7 @@ describe('SDK adapters', () => {
         expect(page.emptyReason).toBe(testCase.emptyReason);
         expect(result.sources).toHaveLength(testCase.count!);
       }
-      expect(audit[1]).toContain(JSON.stringify(args));
+      expect(JSON.parse(audit[1]!.split(' · ')[1]!)).toMatchObject(args);
     },
   );
   it('supports a first-position-only system template through a non-streaming tool continuation', async () => {

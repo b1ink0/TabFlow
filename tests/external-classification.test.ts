@@ -4,7 +4,7 @@ import { DEFAULTS, newRecord } from '../src/shared/model';
 import {
   externalClassification,
   externalClassificationScope,
-} from '../src/shared/external-classification';
+} from '../src/shared/organization/external-classification';
 
 describe('external classification packet', () => {
   it('exports only scoped open occurrences without cache or URL secrets and includes protection context', () => {

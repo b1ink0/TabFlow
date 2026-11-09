@@ -1,6 +1,6 @@
 import { computed, ref, shallowRef, watch, type Ref } from 'vue';
 import { refDebounced } from '@vueuse/core';
-import { searchTabIds } from '../../shared/tab-search';
+import { searchTabIds } from '../../shared/tabs/tab-search';
 import type { AppState, TabRecord } from '../../shared/types';
 export function useTabSearch(
   query: Ref<string>,

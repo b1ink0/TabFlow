@@ -2,7 +2,7 @@
 import { computed, ref, onMounted, onUnmounted } from 'vue';
 import { PhDownloadSimple as Download, PhArrowsClockwise as RefreshCw } from '@phosphor-icons/vue';
 import UiButton from '../../ui/UiButton.vue';
-import PageSection from '../../ui/PageSection.vue';
+import SavedSessionPanel from '../history/SavedSessionPanel.vue';
 import UProgress from '@nuxt/ui/components/Progress.vue';
 import { useWorkspace } from '../../stores/workspace';
 import { useDialog } from '../../stores/dialog';
@@ -50,7 +50,7 @@ onMounted(async () => {
 onUnmounted(() => chrome.storage.onChanged?.removeListener(storageChanged));
 const blocked = computed(() => {
   if (store.app?.session?.missingTabs && !update.value)
-    return 'Review missing session tabs before updating.';
+    return 'Resume missing tabs or keep the current session before reloading.';
   if (store.app?.jobs.some((job) => ['queued', 'running'].includes(job.status)))
     return 'Finish or cancel active inspections before updating.';
   if (store.app?.operations.some((operation) => operation.status === 'running') && !update.value)
@@ -104,141 +104,88 @@ async function runUpdate(finish = false) {
 }
 </script>
 <template>
-  <div class="flex min-w-0 max-w-3xl flex-col">
-    <PageSection
-      title="Activate a new build"
-      description="Production runs on its own. No development server is needed."
-    >
-      <ol class="flex flex-col gap-5 text-[13px] leading-6 text-secondary">
-        <li class="flex items-start gap-3">
-          <span class="text-muted">1.</span>
-          <div class="flex flex-col gap-1">
-            <span class="font-medium text-ink">Build or replace the production files</span
-            ><span
-              >Run
-              <code class="rounded bg-raised px-1.5 py-0.5 text-xs text-ink">bun run build</code>
-              for a local checkout, or replace the release files in the folder your browser already
-              loads. This does not activate them yet.</span
-            >
-          </div>
-        </li>
-        <li class="flex items-start gap-3">
-          <span class="text-muted">2.</span>
-          <div class="flex flex-col gap-1">
-            <span class="font-medium text-ink">Save your work and keep a backup</span
-            ><span
-              >Save settings and other unsaved app edits. Finish inspections and AI runs. Export
-              your collection before updating.</span
-            ><UiButton
-              class="self-start"
-              size="small"
-              variant="ghost"
-              :disabled="busy || !!update || store.backupBusy"
-              @click="store.run(store.exportBackup)"
-              ><Download class="size-3.5" />Export backup</UiButton
-            >
-          </div>
-        </li>
-        <li class="flex items-start gap-3">
-          <span class="text-muted">3.</span>
-          <div class="flex flex-col gap-1">
-            <span class="font-medium text-ink">Let TabFlow prepare and reload</span
-            ><span
-              >Its own pages briefly show a browser-owned page, then return in the same tab slots.
-              Websites stay open and sleeping websites stay asleep. Leave temporary pages open until
-              the update finishes.</span
-            >
-          </div>
-        </li>
-      </ol>
-      <div
-        v-if="busy || update"
-        class="flex flex-col gap-3 rounded-md bg-raised p-4"
-        role="status"
-        aria-live="polite"
-      >
-        <p class="text-[13px] font-medium">{{ progressLabel }}</p>
-        <template v-if="update">
-          <UProgress
-            :model-value="update.processed ?? update.total - update.remaining"
-            :max="Math.max(1, update.total)"
-            color="neutral"
-            aria-label="TabFlow update progress"
-          />
-          <p class="text-xs text-muted">
-            {{ update.processed ?? update.total - update.remaining }} / {{ update.total }} pages
-            {{ update.stage === 'preparing' || update.stage === 'ready' ? 'prepared' : 'returned' }}
-            <span v-if="update.stage !== 'preparing' && update.stage !== 'ready'">
-              · {{ update.remaining }} remaining</span
-            >
-          </p>
-          <p v-for="error in update.errors" :key="error" class="text-[13px] text-secondary">
-            {{ error }}
-          </p>
-          <p
-            v-if="!busy && update.stage === 'interrupted'"
-            class="text-[13px] leading-5 text-secondary"
-          >
-            Finish update returns only saved temporary pages. Tabs you navigated elsewhere remain
-            untouched. Afterwards, review any genuinely missing tabs separately.
-          </p>
-        </template>
-      </div>
-      <div
-        v-if="!update && completion"
-        class="flex flex-col gap-2 rounded-md bg-raised p-4"
-        role="status"
-      >
-        <p class="text-[13px] font-medium text-ink">TabFlow updated and ready</p>
-        <p class="text-[13px] text-secondary">
-          {{ completion.restored }} pages returned to their saved addresses<span
-            v-if="completion.retained"
-          >
-            · {{ completion.retained }} independently changed pages kept</span
-          >. Your native tabs and groups remain in place.
-        </p>
-        <p class="text-xs text-muted">
-          Completed {{ new Date(completion.finishedAt).toLocaleString() }}.
-        </p>
-        <div class="flex flex-col gap-1 pt-2 text-[13px] text-secondary">
-          <span class="font-medium text-ink">What changed in this build</span>
-          <span>Faster update preparation and return for large collections.</span>
-          <span>Visible restoration progress after TabFlow reloads.</span>
-          <span>Retry and resume for interrupted assistant requests.</span>
-        </div>
-      </div>
-      <p v-if="blocked && !update" class="text-[13px] text-secondary" role="status">
-        {{ blocked }}
-      </p>
-      <div class="flex flex-wrap items-center gap-3">
-        <UiButton
-          v-if="update && update.stage === 'interrupted'"
-          variant="primary"
-          :disabled="busy"
-          @click="runUpdate(true)"
-          ><RefreshCw class="size-4" />{{ busy ? 'Updating…' : 'Finish update' }}</UiButton
-        >
-        <UiButton
-          v-else-if="!update"
-          variant="primary"
-          :disabled="busy || store.loading || !!blocked"
-          @click="runUpdate()"
-          ><RefreshCw class="size-4" />{{ busy ? 'Preparing update…' : 'Save & reload' }}</UiButton
-        >
-        <UiButton
-          v-if="store.app?.session?.missingTabs && !update"
-          variant="ghost"
-          @click="store.show('tabs')"
-          >Review missing tabs</UiButton
-        >
-        <UiButton variant="ghost" :disabled="busy" @click="store.show('timeline')"
-          >View recovery history</UiButton
-        >
-      </div>
-    </PageSection>
-    <p class="py-4 text-xs leading-5 text-muted">
-      Use this control instead of the browser’s extension Reload button. Browser side panels may
-      need reopening; unsaved app drafts are not preserved by a reload.
+  <div class="flex min-w-0 max-w-3xl flex-col gap-4">
+    <p class="text-[13px] leading-6 text-secondary">
+      Reload after replacing the extension files. Save any unsaved work first.
     </p>
+    <SavedSessionPanel v-if="!update" recovery-only compact />
+    <div
+      v-if="busy || update"
+      class="flex flex-col gap-3 rounded-md bg-raised p-4"
+      role="status"
+      aria-live="polite"
+    >
+      <p class="text-[13px] font-medium">{{ progressLabel }}</p>
+      <template v-if="update">
+        <UProgress
+          :model-value="update.processed ?? update.total - update.remaining"
+          :max="Math.max(1, update.total)"
+          color="neutral"
+          aria-label="TabFlow update progress"
+        />
+        <p class="text-xs text-muted">
+          {{ update.processed ?? update.total - update.remaining }} / {{ update.total }} pages
+          {{ update.stage === 'preparing' || update.stage === 'ready' ? 'prepared' : 'returned' }}
+          <span v-if="update.stage !== 'preparing' && update.stage !== 'ready'">
+            · {{ update.remaining }} remaining</span
+          >
+        </p>
+        <p v-for="error in update.errors" :key="error" class="text-[13px] text-secondary">
+          {{ error }}
+        </p>
+        <p
+          v-if="!busy && update.stage === 'interrupted'"
+          class="text-[13px] leading-5 text-secondary"
+        >
+          Finish update returns only saved temporary pages. Tabs you navigated elsewhere remain
+          untouched. Afterwards, review any genuinely missing tabs separately.
+        </p>
+      </template>
+    </div>
+    <div
+      v-if="!update && completion"
+      class="flex flex-col gap-2 rounded-md bg-raised p-4"
+      role="status"
+    >
+      <p class="text-[13px] font-medium text-ink">TabFlow updated and ready</p>
+      <p class="text-xs text-muted">
+        Completed {{ new Date(completion.finishedAt).toLocaleString() }}.
+      </p>
+    </div>
+    <p
+      v-if="blocked && !update && !store.app?.session?.missingTabs"
+      class="text-[13px] text-secondary"
+      role="status"
+    >
+      {{ blocked }}
+    </p>
+    <div class="flex flex-wrap items-center gap-3">
+      <UiButton
+        size="small"
+        variant="ghost"
+        :disabled="busy || !!update || store.backupBusy"
+        @click="store.run(store.exportBackup)"
+        ><Download class="size-3.5" />Export backup</UiButton
+      >
+      <UiButton
+        v-if="update && update.stage === 'interrupted'"
+        size="small"
+        variant="primary"
+        :disabled="busy"
+        @click="runUpdate(true)"
+        ><RefreshCw class="size-3.5" />{{ busy ? 'Updating…' : 'Finish update' }}</UiButton
+      >
+      <UiButton
+        v-else-if="!update"
+        size="small"
+        variant="primary"
+        :disabled="busy || store.loading || !!blocked"
+        @click="runUpdate()"
+        ><RefreshCw class="size-3.5" />{{ busy ? 'Preparing update…' : 'Save & reload' }}</UiButton
+      >
+      <UiButton size="small" variant="ghost" :disabled="busy" @click="store.show('timeline')"
+        >View recovery history</UiButton
+      >
+    </div>
   </div>
 </template>

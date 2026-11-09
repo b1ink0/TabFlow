@@ -10,7 +10,7 @@ import {
   currentAssistantTrace,
   capabilityLabels,
   type AssistantChange,
-} from '../../shared/assistant-actions';
+} from '../../shared/assistant/assistant-actions';
 import { useAssistantConversations } from '../../stores/assistant';
 const props = defineProps<{ messageId?: string; threadId?: string; traceIds?: string[] }>();
 const store = useWorkspace();

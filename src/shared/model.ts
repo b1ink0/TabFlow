@@ -1,6 +1,6 @@
-import { tagReviewSchema } from './tag-analysis';
+import { tagReviewSchema } from './organization/tag-analysis';
 import { z } from 'zod';
-import { validFavicon } from './favicon';
+import { validFavicon } from './tabs/favicon';
 import type {
   Area,
   Backup,
@@ -150,8 +150,8 @@ export const migrationProgressSchema = z.object({
 });
 export const now = () => Date.now();
 export const clip = (v: unknown, n = 10000) => String(v ?? '').slice(0, n);
-import { isNativeNewTabURL, pageURL } from './urls';
-export { pageURL, suspendedInfo, makeSuspendedURL } from './urls';
+import { isNativeNewTabURL, pageURL } from './tabs/urls';
+export { pageURL, suspendedInfo, makeSuspendedURL } from './tabs/urls';
 export function newRecord(url: string, id: string = uuid()): TabRecord {
   return {
     id,
@@ -340,7 +340,7 @@ export const collectionDraftSchema = z.object({
     .array(
       z.object({
         recordId: z.string().min(1),
-        url: z.string().max(10000),
+        url: z.string(),
         navigationVersion: z.number().int().min(0),
         suggestedTags: z.array(z.string().trim().min(1).max(80)),
       }),
@@ -367,7 +367,7 @@ export const collectionDraftSchema = z.object({
     .array(
       z.object({
         recordId: z.string().min(1),
-        url: z.string().max(10000),
+        url: z.string(),
         navigationVersion: z.number().int().min(0),
         projectName: z.string().trim().min(1).max(80),
         categoryName: z.string().trim().min(1).max(80),
@@ -503,7 +503,7 @@ const organizationDraftSchema = z.object({
     .array(
       z.object({
         recordId: z.string().min(1),
-        url: z.string().max(10000),
+        url: z.string(),
         navigationVersion: z.number().int().min(0),
         suggestedTags: z.array(z.string().trim().min(1).max(80)),
       }),
@@ -523,7 +523,7 @@ const organizationDraftSchema = z.object({
     .array(
       z.object({
         recordId: z.string().min(1),
-        url: z.string().max(10000),
+        url: z.string(),
         navigationVersion: z.number().int().min(0),
         categoryName: z.string().min(1).max(80),
         reason: z.string().max(500),

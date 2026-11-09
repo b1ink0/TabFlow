@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { newRecord } from '../src/shared/model';
-import { reuseUnchangedRecords } from '../src/shared/state-equality';
+import { reuseUnchangedRecords } from '../src/shared/utils/state-equality';
 
 describe('worker refresh identities', () => {
   it('reuses unchanged duplicate occurrences without merging their identities', () => {

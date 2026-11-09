@@ -5,7 +5,7 @@ import UiCollapsible from '../../ui/UiCollapsible.vue';
 import UiDataBlock from '../../ui/UiDataBlock.vue';
 import { rpc } from '../../shared/rpc';
 import { useWorkspace } from '../../stores/workspace';
-import type { PermissionReviewSummary } from '../../shared/permission-review';
+import type { PermissionReviewSummary } from '../../shared/assistant/permission-review';
 const props = defineProps<{
   messageId: string;
   ids: string[];

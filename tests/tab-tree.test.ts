@@ -4,7 +4,7 @@ import {
   tabAncestors,
   tabTreeRows,
   validateTabTree,
-} from '../src/shared/tab-tree';
+} from '../src/shared/tabs/tab-tree';
 import { newRecord } from '../src/shared/model';
 
 describe('persistent tab branches', () => {

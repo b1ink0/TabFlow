@@ -3,7 +3,7 @@ import UButton from '@nuxt/ui/components/Button.vue';
 import UTooltip from '@nuxt/ui/components/Tooltip.vue';
 import { ref, useAttrs, watch, type ComponentPublicInstance } from 'vue';
 import { useEventListener } from '@vueuse/core';
-import { cn } from '../shared/cn';
+import { cn } from '../shared/utils/cn';
 import type { ClassValue } from 'clsx';
 defineOptions({ inheritAttrs: false });
 const attrs = useAttrs();

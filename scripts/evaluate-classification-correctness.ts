@@ -1,9 +1,9 @@
 // Explicit opt-in. Synthetic evidence only; never connects to a browser profile.
 import { mkdirSync, writeFileSync } from 'node:fs';
-import { generateCollectionDraft } from '../src/ai/client';
+import { generateCollectionDraft } from '../src/ai/workflows/generation';
 import { DEFAULTS, newRecord } from '../src/shared/model';
 import type { AppState, CollectionAnalysis, CollectionDraft } from '../src/shared/types';
-import { collectionAnalysisSchema } from '../src/shared/collection-analysis';
+import { collectionAnalysisSchema } from '../src/shared/organization/collection-analysis';
 
 const endpoint = process.env.TABFLOW_DECISION_URL,
   model = process.env.TABFLOW_DECISION_MODEL;

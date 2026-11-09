@@ -14,7 +14,7 @@ import {
   externalClassification,
   externalClassificationScope,
   downloadClassificationFile,
-} from '../../shared/external-classification';
+} from '../../shared/organization/external-classification';
 const store = useWorkspace();
 const props = withDefaults(
   defineProps<{

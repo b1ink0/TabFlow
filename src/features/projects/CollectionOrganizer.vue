@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { skipFailedCollectionBatch } from '../../shared/collection-analysis';
+import { skipFailedCollectionBatch } from '../../shared/organization/collection-analysis';
 import UiCheckbox from '../../ui/UiCheckbox.vue';
 import UiDisclosure from '../../ui/UiDisclosure.vue';
 import UiCollapsible from '../../ui/UiCollapsible.vue';
@@ -21,13 +21,17 @@ import UModal from '@nuxt/ui/components/Modal.vue';
 import { useWorkspace } from '../../stores/workspace';
 import { useAssistantConversations } from '../../stores/assistant';
 import { rpc } from '../../shared/rpc';
-import { PROPOSAL_PAGE_SIZE, proposalExport, proposalImport } from '../../shared/proposal-review';
+import {
+  PROPOSAL_PAGE_SIZE,
+  proposalExport,
+  proposalImport,
+} from '../../shared/organization/proposal-review';
 import {
   nativeGroupActions,
   renameDraftProject,
   renameDraftCategory,
   mergeDraftProjects,
-} from '../../shared/collection';
+} from '../../shared/organization/collection';
 import UiButton from '../../ui/UiButton.vue';
 import InferenceHistory from '../assistant/InferenceHistory.vue';
 import AssistantRunTiming from '../assistant/AssistantRunTiming.vue';
@@ -35,10 +39,10 @@ import UiSelect from '../../ui/UiSelect.vue';
 import UiTagPicker from '../../ui/UiTagPicker.vue';
 import UiTagChecklist from '../../ui/UiTagChecklist.vue';
 import TagSuggestionReview from './TagSuggestionReview.vue';
-import { resolveTagReview, tagHash } from '../../shared/tag-analysis';
-import { editableProposal, setDraftExclusions } from '../../shared/proposal-edits';
+import { resolveTagReview, tagHash } from '../../shared/organization/tag-analysis';
+import { editableProposal, setDraftExclusions } from '../../shared/organization/proposal-edits';
 import { useDialog } from '../../stores/dialog';
-import { matchesTags } from '../../shared/tab-filters';
+import { matchesTags } from '../../shared/tabs/tab-filters';
 import ExternalClassificationDialog from './ExternalClassificationDialog.vue';
 import ProposalHistory from './ProposalHistory.vue';
 import type { CollectionAnalysis, CollectionDraft, CollectionProposal } from '../../shared/types';

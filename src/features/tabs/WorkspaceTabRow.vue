@@ -16,11 +16,11 @@ import UiTabHoverCard from '../../ui/UiTabHoverCard.vue';
 import UiButton from '../../ui/UiButton.vue';
 import UiBranchToggle from '../../ui/UiBranchToggle.vue';
 import UiCheckbox from '../../ui/UiCheckbox.vue';
-import { cn } from '../../shared/cn';
+import { cn } from '../../shared/utils/cn';
 import { useWorkspace } from '../../stores/workspace';
 import { useDialog } from '../../stores/dialog';
 import { rpc } from '../../shared/rpc';
-import { parseTagSelection } from '../../shared/tags';
+import { parseTagSelection } from '../../shared/tabs/tags';
 import type { TabRecord } from '../../shared/types';
 
 const props = defineProps<{

@@ -285,6 +285,70 @@ const server = createServer(async (req, res) => {
       const parsedRequest = JSON.parse(requestBody);
       completionRequests.push(parsedRequest);
       res.setHeader('Content-Type', 'application/json');
+      const sendCompletion = (body) => {
+        if (!parsedRequest.stream) return res.end(body);
+        const choice = JSON.parse(body).choices[0];
+        res.setHeader('Content-Type', 'text/event-stream');
+        res.write(
+          `data: ${JSON.stringify({
+            choices: [
+              {
+                index: 0,
+                delta: {
+                  ...choice.message,
+                  tool_calls: choice.message.tool_calls?.map((call, index) => ({ ...call, index })),
+                },
+                finish_reason: null,
+              },
+            ],
+          })}\n\n`,
+        );
+        res.write(
+          `data: ${JSON.stringify({ choices: [{ index: 0, delta: {}, finish_reason: choice.finish_reason }] })}\n\n`,
+        );
+        res.end('data: [DONE]\n\n');
+      };
+      if (
+        parsedRequest.messages.at(-1)?.role === 'user' &&
+        parsedRequest.messages.at(-1)?.content === 'Read the synthetic long reference'
+      ) {
+        sendCompletion(
+          JSON.stringify({
+            choices: [
+              {
+                message: {
+                  role: 'assistant',
+                  content: null,
+                  tool_calls: [
+                    {
+                      id: 'long-reference-read',
+                      type: 'function',
+                      function: {
+                        name: 'list_tabs',
+                        arguments: JSON.stringify({
+                          query: '',
+                          projectId: null,
+                          windowId: null,
+                          tagFilter: {
+                            tags: [],
+                            mode: 'any',
+                            untagged: false,
+                            categoryId: null,
+                            groupId: null,
+                          },
+                          offset: 0,
+                        }),
+                      },
+                    },
+                  ],
+                },
+                finish_reason: 'tool_calls',
+              },
+            ],
+          }),
+        );
+        return;
+      }
       if (
         parsedRequest.messages.at(-1)?.role === 'user' &&
         ['Prepare synthetic workspace edits', 'Apply synthetic workspace edits'].includes(
@@ -292,7 +356,7 @@ const server = createServer(async (req, res) => {
         )
       ) {
         await new Promise((resolve) => globalThis.setTimeout(resolve, 1500));
-        res.end(
+        sendCompletion(
           JSON.stringify({
             choices: [
               {
@@ -332,7 +396,7 @@ const server = createServer(async (req, res) => {
         );
         return;
       }
-      res.end(
+      sendCompletion(
         JSON.stringify({
           choices: [
             {
@@ -386,6 +450,38 @@ await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
 const base = `http://127.0.0.1:${server.address().port}`;
 state.settings.aiBase = `${base}/v1`;
 state.settings.aiStreamResponses = false;
+if (process.env.TABFLOW_UI_FOCUS === 'long-url') {
+  state.records[0].url = `https://example.test/reference?q=${'a'.repeat(12000)}`;
+}
+if (process.env.TABFLOW_UI_FOCUS === 'motion-history') {
+  state.session = { savedAt: Date.now(), windowCount: 3, tabCount: 337, missingTabs: 0 };
+}
+if (process.env.TABFLOW_UI_FOCUS === 'ai-sdk') {
+  state.settings.aiStreamResponses = true;
+  state.records.forEach((record) => {
+    record.projectId = null;
+  });
+  state.memberships = [];
+}
+if (process.env.TABFLOW_UI_FOCUS === 'attachment-picker') {
+  state.categories = [
+    {
+      id: 'library-references',
+      projectId: 'library',
+      name: 'References',
+      description: 'Research sources',
+      color: 'blue',
+      order: 0,
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+    },
+  ];
+  state.tagVocabulary = [
+    'Streamer',
+    ...Array.from({ length: 70 }, (_, index) => `Topic ${String(index).padStart(2, '0')}`),
+  ];
+  state.records[0].tags = ['Streamer'];
+}
 if (process.env.TABFLOW_UI_FOCUS === 'compact-ui') {
   state.settings.imageModel = state.settings.aiModel;
   state.settings.imageBase = state.settings.aiBase;
@@ -434,7 +530,7 @@ try {
       ).observe({ type: 'longtask', buffered: true });
     });
     await page.addInitScript(
-      ({ state, base }) => {
+      ({ state, base, version }) => {
         const local = { chat: [] };
         if (window.sessionStorage.getItem('testCollectionAnalysis') === 'true') {
           Object.assign(state.settings, {
@@ -848,6 +944,7 @@ try {
           runtime: {
             onMessage: { addListener: () => {}, removeListener: () => {} },
             getURL: (path) => `${base}/${path}`,
+            getManifest: () => ({ version }),
             sendMessage: async (request) => {
               if (request.type === 'saveSession') {
                 window.__sessionSaveRequests ||= [];
@@ -961,6 +1058,8 @@ try {
                 window.__stateReplyCount = (window.__stateReplyCount || 0) + 1;
                 if (window.__stateReplyDelay)
                   await new Promise((resolve) => setTimeout(resolve, window.__stateReplyDelay));
+                if (window.__failStateReply)
+                  return { ok: false, error: 'Synthetic workspace read failure' };
                 return {
                   ok: true,
                   value: structuredClone({
@@ -1365,10 +1464,470 @@ try {
           },
         };
       },
-      { state, base },
+      { state, base, version: applicationVersion },
     );
-    await page.goto(`${base}/dashboard.html#tabs`);
-    await page.getByRole('heading', { name: 'Windows & tabs', exact: true }).waitFor();
+    let delayedViewChunks = 0;
+    if (process.env.TABFLOW_UI_FOCUS === 'branch-hover') {
+      await page.goto(`${base}/dashboard.html#tabs`);
+      await page.getByRole('searchbox', { name: 'Search tabs', exact: true }).waitFor();
+      await page.evaluate(() => window.__branchingTreeFixture());
+      await activateWorkspaceAction(page, 'Refresh workspace');
+      const connector = page
+        .locator('[data-tab-parent-connectors] path[data-child-id="record-2"]')
+        .first();
+      await connector.waitFor({ state: 'attached' });
+      const before = await connector.evaluate((el) => window.getComputedStyle(el).stroke);
+      await page.locator('[data-tab-tree-id="record-2"]').first().hover();
+      const result = await connector.evaluate(async (el) => {
+        const animations = [...el.getAnimations(), ...el.parentElement.getAnimations()];
+        const properties = animations.map((animation) => animation.transitionProperty);
+        for (const animation of animations) animation.currentTime = 75;
+        const middle = window.getComputedStyle(el).stroke;
+        await Promise.all(animations.map((animation) => animation.finished));
+        return { properties, middle, end: window.getComputedStyle(el).stroke };
+      });
+      assert(result.properties.includes('stroke') && result.properties.includes('opacity'));
+      assert.notEqual(result.middle, before, 'Stroke interpolates away from its resting color');
+      assert.notEqual(
+        result.middle,
+        result.end,
+        'Stroke has an intermediate color before reaching highlight',
+      );
+      await page.screenshot({
+        path: 'artifacts/ui-branch-hover-transition.png',
+        animations: 'disabled',
+      });
+      await page.emulateMedia({ reducedMotion: 'reduce' });
+      assert.equal(
+        await connector.evaluate((el) => window.getComputedStyle(el).transitionProperty),
+        'none',
+      );
+      assert.deepEqual(errors, []);
+      await page.close();
+      continue;
+    }
+    if (process.env.TABFLOW_UI_FOCUS === 'failure-diagnostics') {
+      await fixtureContext.grantPermissions(['clipboard-read', 'clipboard-write']);
+      await page.goto(`${base}/dashboard.html#assistant`);
+      await page
+        .getByRole('textbox', { name: 'Message to workspace assistant', exact: true })
+        .waitFor();
+      await page.evaluate(async () => {
+        await new Promise((resolve, reject) => {
+          const open = window.indexedDB.open('tabloom');
+          open.onerror = () => reject(open.error);
+          open.onsuccess = () => {
+            const tx = open.result.transaction(
+              ['assistantThreads', 'collectionAnalyses', 'inferenceReceipts'],
+              'readwrite',
+            );
+            tx.objectStore('assistantThreads').put({
+              id: 'diagnostic-chat',
+              title: 'Organize selected references',
+              createdAt: 1,
+              updatedAt: 100,
+              projectId: null,
+              status: 'error',
+              messages: [
+                {
+                  id: 'diagnostic-user',
+                  role: 'user',
+                  content: 'Organize my selected references',
+                  createdAt: 1,
+                },
+                {
+                  id: 'diagnostic-failure',
+                  role: 'assistant',
+                  content:
+                    'Classifier batch failed after 6 attempts. Occurrence IDs did not match.',
+                  createdAt: 2,
+                  requestMessageId: 'diagnostic-user',
+                  deliveryStatus: 'error',
+                  collectionAnalysisId: 'diagnostic-analysis',
+                  analysisFailure: {
+                    stage: 'classification',
+                    completed: 108,
+                    total: 148,
+                    batchCount: 1,
+                    attempts: 6,
+                  },
+                },
+              ],
+            });
+            tx.objectStore('collectionAnalyses').put({
+              id: 'diagnostic-analysis',
+              revision: 1,
+              createdAt: 1,
+              updatedAt: 20,
+              purpose: 'proposal',
+              instruction: 'Organize selected references',
+              reuseAcceptedTaxonomyOnly: true,
+              scope: [
+                { id: 'record-0', url: 'https://example.test/reference', navigationVersion: 0 },
+              ],
+              discoveredIds: ['record-0'],
+              classifiedIds: [],
+              projects: [],
+              summaries: [],
+              assignments: [],
+              unresolvedRecordIds: ['record-0'],
+              failedBatch: {
+                stage: 'classification',
+                recordIds: ['record-0'],
+                attempts: 6,
+                error: 'Wrong occurrence ID',
+                failedAt: 20,
+              },
+            });
+            for (let i = 0; i < 6; i++)
+              tx.objectStore('inferenceReceipts').put({
+                id: `diagnostic-attempt-${i}`,
+                analysisId: 'diagnostic-analysis',
+                occurrenceIds: ['record-0'],
+                contract: 'isolated-evidence-v2',
+                stage: 'classification',
+                model: 'fixture-small',
+                startedAt: 10 + i,
+                finishedAt: 11 + i,
+                outcome: 'responded',
+                request: JSON.stringify({ tab: 'record-0', apiKey: 'synthetic-private-key' }),
+                response: JSON.stringify({ assignments: [{ recordId: 'wrong-record' }] }),
+              });
+            tx.objectStore('inferenceReceipts').put({
+              id: 'irrelevant-taxonomy',
+              analysisId: 'diagnostic-analysis',
+              contract: 'isolated-evidence-v2',
+              stage: 'taxonomy',
+              model: 'fixture-large',
+              startedAt: 99,
+              finishedAt: 100,
+              outcome: 'responded',
+              request: '{}',
+              response: '{}',
+            });
+            tx.oncomplete = () => {
+              open.result.close();
+              resolve();
+            };
+            tx.onerror = () => reject(tx.error);
+          };
+        });
+      });
+      await page.reload();
+      await page.getByRole('button', { name: 'Copy diagnostics', exact: true }).click();
+      await page.getByRole('button', { name: 'Diagnostics copied', exact: true }).waitFor();
+      const copied = await page.evaluate(() => window.navigator.clipboard.readText());
+      const report = JSON.parse(copied);
+      assert.equal(report.question, 'Organize my selected references');
+      assert.equal(report.relevantInferenceAttempts.length, 6);
+      assert(report.relevantInferenceAttempts.every((entry) => entry.stage === 'classification'));
+      assert.equal(report.progress.failedBatch.recordIds[0], 'record-0');
+      assert(!copied.includes('synthetic-private-key'));
+      assert.equal(
+        await page.getByText('Request', { exact: true }).count(),
+        0,
+        'No need to expand inference requests',
+      );
+      await page.screenshot({
+        path: 'artifacts/ui-copy-failure-diagnostics.png',
+        animations: 'disabled',
+      });
+      assert.deepEqual(errors, []);
+      await page.close();
+      continue;
+    }
+    if (process.env.TABFLOW_UI_FOCUS === 'long-url') {
+      await page.goto(`${base}/dashboard.html#assistant`);
+      const composer = page.getByRole('textbox', {
+        name: 'Message to workspace assistant',
+        exact: true,
+      });
+      await composer.fill('Read the synthetic long reference');
+      await page.getByRole('button', { name: 'Send', exact: true }).click();
+      await page
+        .getByText('Recovered the saved synthetic request.', { exact: true })
+        .first()
+        .waitFor();
+      await page
+        .getByText(/Tab evidence · \d+ references/)
+        .first()
+        .waitFor();
+      await page.reload();
+      await page
+        .getByText('Recovered the saved synthetic request.', { exact: true })
+        .first()
+        .waitFor();
+      await composer.fill('Continue with these references');
+      await page.getByRole('button', { name: 'Send', exact: true }).click();
+      await page.waitForFunction(
+        () =>
+          [...document.querySelectorAll('p')].filter(
+            (el) => el.textContent === 'Recovered the saved synthetic request.',
+          ).length >= 2,
+      );
+      assert.equal(await page.getByText(/Too big:|could not be cloned/).count(), 0);
+      assert.deepEqual(errors, []);
+      await page.screenshot({ path: 'artifacts/ui-long-url-chat.png', animations: 'disabled' });
+      await page.close();
+      continue;
+    }
+    if (process.env.TABFLOW_UI_FOCUS === 'update-cleanup') {
+      await page.setViewportSize({ width: 360, height: 800 });
+      await page.goto(`${base}/sidepanel.html#update`);
+      await page.getByRole('button', { name: 'Save & reload', exact: true }).waitFor();
+      for (const width of [1000, 360]) {
+        await page.setViewportSize({ width, height: 800 });
+        const buttons = await Promise.all(
+          ['Export backup', 'Save & reload', 'View recovery history'].map((name) =>
+            page.getByRole('button', { name, exact: true }).boundingBox(),
+          ),
+        );
+        assert(
+          buttons.every((box) => box.height === buttons[0].height),
+          'Update actions share the small ghost-button height',
+        );
+        assert.equal(buttons[0].height, width < 640 ? 40 : 32);
+      }
+      assert.equal(await page.locator('[data-workspace-view] ol').count(), 0);
+      assert.equal(await page.getByText('What changed in this build', { exact: true }).count(), 0);
+      await page.evaluate(() => window.__missingSessionFixture());
+      await activateWorkspaceAction(page, 'Refresh workspace');
+      const reload = page.getByRole('button', { name: 'Save & reload', exact: true });
+      await page.getByRole('button', { name: 'Keep current changes', exact: true }).waitFor();
+      assert(await reload.isDisabled());
+      await page.getByRole('button', { name: 'Resume missing tabs', exact: true }).waitFor();
+      await page.screenshot({ path: 'artifacts/ui-update-missing.png', animations: 'disabled' });
+      await page.getByRole('button', { name: 'Keep current changes', exact: true }).click();
+      await page.getByRole('dialog').getByRole('button', { name: 'Cancel', exact: true }).click();
+      assert.equal(await page.evaluate(() => window.__sessionSaveRequests?.length || 0), 0);
+      assert(await reload.isDisabled());
+      await page.getByRole('button', { name: 'Keep current changes', exact: true }).click();
+      await page
+        .getByRole('dialog')
+        .getByRole('button', { name: 'Keep current changes', exact: true })
+        .click();
+      await page.waitForFunction(() => window.__maintenanceState().session.missingTabs === 0);
+      assert.deepEqual(await page.evaluate(() => window.__sessionSaveRequests), [
+        { type: 'saveSession', payload: { replaceMissing: true } },
+      ]);
+      assert(await reload.isEnabled());
+      assert.equal(
+        await page.getByRole('button', { name: 'Resume missing tabs', exact: true }).count(),
+        0,
+      );
+      await page.screenshot({ path: 'artifacts/ui-update-clean.png', animations: 'disabled' });
+      await reload.click();
+      await page
+        .getByRole('dialog')
+        .getByRole('heading', { name: 'Reload TabFlow with the new build?', exact: true })
+        .waitFor();
+      await page.getByRole('button', { name: 'Cancel', exact: true }).click();
+      await page.evaluate(() => window.__pendingUpdateFixture());
+      await page.getByRole('dialog').waitFor({ state: 'hidden' });
+      await activateWorkspaceAction(page, 'Refresh workspace');
+      await page.getByRole('button', { name: 'Finish update', exact: true }).waitFor();
+      assert.equal(
+        await page.getByRole('button', { name: 'Keep current changes', exact: true }).count(),
+        0,
+      );
+      await page.locator('[aria-label="TabFlow update progress"] [role=progressbar]').waitFor();
+      assert.deepEqual(errors, []);
+      await page.close();
+      continue;
+    }
+    if (process.env.TABFLOW_UI_FOCUS === 'motion-history') {
+      await page.goto(`${base}/dashboard.html#projects`);
+      const tab = page.getByRole('tab', { name: 'Tabs', exact: true });
+      await tab.waitFor();
+      const indicator = page.locator('[role=tablist] > [data-slot=indicator]').first();
+      const properties = await indicator.evaluate(
+        (el) => window.getComputedStyle(el).transitionProperty,
+      );
+      assert(
+        !/all|width|height|transform/.test(properties),
+        'Tab indicator never animates geometry from zero',
+      );
+      const view = page.locator('[data-workspace-view] > div').first();
+      assert.equal(
+        await view.evaluate((el) => window.getComputedStyle(el).animationName),
+        'workspace-fade-in',
+      );
+      assert.equal(await view.evaluate((el) => window.getComputedStyle(el).transform), 'none');
+      await page.setViewportSize({ width: 360, height: 800 });
+      await page.goto(`${base}/sidepanel.html#timeline`);
+      const heading = page.getByRole('heading', { name: 'Saved session', exact: true });
+      await heading.waitFor();
+      const summary = await heading.locator('..').boundingBox();
+      const saveButton = await page
+        .getByRole('button', { name: 'Save session now', exact: true })
+        .boundingBox();
+      assert(summary.width > 250, 'Session summary retains readable width');
+      assert(
+        saveButton.y >= summary.y + summary.height,
+        'Actions wrap below the summary on narrow screens',
+      );
+      assert.equal(
+        await page.evaluate(() => document.documentElement.scrollWidth > innerWidth),
+        false,
+      );
+      await page.screenshot({
+        path: 'artifacts/ui-history-responsive.png',
+        animations: 'disabled',
+      });
+      assert.deepEqual(errors, []);
+      await page.close();
+      continue;
+    }
+    if (process.env.TABFLOW_UI_FOCUS === 'lazy-loading') {
+      await page.route(
+        /\/(?:TabsView|SidePanelWorkspace|ProjectsView)-[^/]+\.js$/,
+        async (route) => {
+          delayedViewChunks++;
+          await new Promise((resolve) => setTimeout(resolve, 1500));
+          await route.continue();
+        },
+      );
+    }
+    await page.goto(`${base}/dashboard.html#tabs`, { waitUntil: 'domcontentloaded' });
+    await page
+      .getByRole('heading', { name: 'Windows & tabs', exact: true })
+      .waitFor()
+      .catch(async (error) => {
+        await page.screenshot({ path: 'artifacts/ui-startup-failure.png' });
+        await writeFile('artifacts/ui-startup-failure.txt', await page.locator('body').innerText());
+        throw error;
+      });
+    if (process.env.TABFLOW_UI_FOCUS === 'lazy-loading') {
+      const spinner = page.getByRole('status', { name: 'Loading', exact: true }).first();
+      await spinner.waitFor();
+      assert(delayedViewChunks > 0, 'Real view chunk is delayed');
+      const loadingIcon = await spinner.locator('svg').boundingBox();
+      const contentPane = await page
+        .locator('main [data-reka-scroll-area-viewport]')
+        .first()
+        .boundingBox();
+      assert(
+        Math.abs(loadingIcon.x + loadingIcon.width / 2 - contentPane.x - contentPane.width / 2) < 2,
+        'Spinner is horizontally centered in its content pane',
+      );
+      assert(
+        Math.abs(loadingIcon.y + loadingIcon.height / 2 - contentPane.y - contentPane.height / 2) <
+          16,
+        'Spinner is vertically centered in its content pane',
+      );
+      await page.screenshot({ path: 'artifacts/ui-lazy-tabs-loading.png', animations: 'disabled' });
+      await page.getByRole('searchbox', { name: 'Search tabs', exact: true }).waitFor();
+      await page.getByRole('button', { name: 'Projects', exact: true }).first().click();
+      await spinner.waitFor();
+      await page.getByRole('tab', { name: 'Tabs', exact: true }).waitFor();
+      await page.setViewportSize({ width: 420, height: 900 });
+      await page.goto(`${base}/sidepanel.html#tabs`, { waitUntil: 'domcontentloaded' });
+      await spinner.waitFor();
+      await page.screenshot({
+        path: 'artifacts/ui-lazy-sidepanel-loading.png',
+        animations: 'disabled',
+      });
+      await page.getByRole('button', { name: 'Projects', exact: true }).waitFor();
+      assert(delayedViewChunks >= 3, 'Dashboard tabs, projects and side-panel chunks are covered');
+      assert.equal(await page.getByRole('status', { name: 'Loading', exact: true }).count(), 0);
+      assert.equal(await page.getByText('Loading workspace…', { exact: true }).count(), 0);
+      assert.deepEqual(errors, []);
+      await page.close();
+      continue;
+    }
+    if (process.env.TABFLOW_UI_FOCUS === 'initial-loading') {
+      await page.setViewportSize({ width: 420, height: 900 });
+      await page.addInitScript(() => {
+        window.__stateReplyDelay = 2000;
+      });
+      await page.goto(`${base}/sidepanel.html#tabs`);
+      await page.getByRole('status', { name: 'Loading', exact: true }).waitFor();
+      assert.equal(
+        await page
+          .getByText(
+            'Create a project or review an AI organization proposal to give your tabs a place.',
+            { exact: true },
+          )
+          .count(),
+        0,
+      );
+      assert.equal(
+        await page.getByText('0 tabs · 0 windows · 0 projects', { exact: true }).count(),
+        0,
+      );
+      await page.screenshot({ path: 'artifacts/ui-initial-loading.png', animations: 'disabled' });
+      await page.getByRole('button', { name: 'Projects', exact: true }).waitFor();
+      await activateWorkspaceAction(page, 'Refresh workspace');
+      assert.equal(
+        await page.getByRole('status', { name: 'Loading', exact: true }).count(),
+        0,
+        'Refresh preserves usable content',
+      );
+      await page.addInitScript(() => {
+        window.__failStateReply = true;
+      });
+      await page.reload();
+      await page.getByText('Could not load your workspace.', { exact: true }).waitFor();
+      await page.evaluate(() => {
+        window.__failStateReply = false;
+      });
+      await page.getByRole('button', { name: 'Retry loading workspace', exact: true }).click();
+      await page.getByRole('status', { name: 'Loading', exact: true }).waitFor();
+      await page.getByRole('button', { name: 'Projects', exact: true }).waitFor();
+      assert.equal(
+        errors.filter((message) => !message.includes('Synthetic workspace read failure')).length,
+        0,
+      );
+      errors.splice(0, errors.length);
+      await page.close();
+      continue;
+    }
+    if (process.env.TABFLOW_UI_FOCUS === 'ai-sdk') {
+      const before = await page.evaluate(() => JSON.stringify(window.__maintenanceState().records));
+      await page.goto(`${base}/sidepanel.html#tabs`);
+      await page.getByRole('button', { name: /^Inbox/ }).click();
+      await page.getByRole('button', { name: 'Ask about Inbox', exact: true }).click();
+      await page.getByRole('button', { name: /^Remove attachment: \d+ selected tabs$/ }).waitFor();
+      await page
+        .getByRole('textbox', { name: 'Message to workspace assistant', exact: true })
+        .fill('Prepare synthetic workspace edits');
+      await page.getByRole('button', { name: 'Send', exact: true }).click();
+      await page
+        .getByText('Recovered the saved synthetic request.', { exact: true })
+        .first()
+        .waitFor();
+      await page
+        .getByRole('button', { name: 'Save changes', exact: true })
+        .waitFor()
+        .catch(async (error) => {
+          await page.screenshot({ path: 'artifacts/ai-sdk-browser-failure.png' });
+          await writeFile(
+            'artifacts/ai-sdk-browser-failure.txt',
+            await page.locator('body').innerText(),
+          );
+          await writeFile(
+            'artifacts/ai-sdk-browser-requests.json',
+            JSON.stringify(completionRequests, null, 2),
+          );
+          throw error;
+        });
+      assert.equal(completionRequests.length, 2);
+      assert(completionRequests.every((request) => request.stream));
+      assert(completionRequests[1].messages.some((message) => message.role === 'tool'));
+      assert.equal(
+        await page.evaluate(() => JSON.stringify(window.__maintenanceState().records)),
+        before,
+      );
+      assert.equal(
+        await page.evaluate(() => window.__approvalRequests.length),
+        0,
+        'Preparing a draft must not execute or delegate approval',
+      );
+      await page.screenshot({ path: 'artifacts/ai-sdk-browser-draft.png', animations: 'disabled' });
+      assert.deepEqual(errors, []);
+      await page.close();
+      continue;
+    }
     if (process.env.TABFLOW_UI_FOCUS === 'docs') {
       await fixtureContext.route('**/*', (route) =>
         route.request().url().startsWith(base) || route.request().url().startsWith('data:')
@@ -1777,20 +2336,28 @@ try {
       await page.setViewportSize({ width: 360, height: 700 });
       await page.goto(`${base}/sidepanel.html#assistant`);
       await page.getByRole('button', { name: 'Add attachments', exact: true }).click();
-      const search = page.getByPlaceholder('Search tabs, projects, tags…');
+      const search = page.getByPlaceholder('Search workspace context…');
       await search.waitFor();
       const popup = page.locator('[role=listbox]').first();
       const searchBox = await search.boundingBox();
       const popupBox = await popup.boundingBox();
       assert(searchBox.x - popupBox.x >= 8, 'Search has an inset from the popup edge');
-      assert(popupBox.height <= 330 && popupBox.width <= 336, 'Picker stays compact');
+      await page.screenshot({
+        path: 'artifacts/ui-context-picker-all.png',
+        animations: 'disabled',
+      });
+      assert(popupBox.height <= 370 && popupBox.width <= 336, 'Picker stays compact');
       const viewport = popup.locator('[data-slot=viewport]');
       assert.equal(
         await viewport.evaluate((el) => window.getComputedStyle(el).scrollbarWidth),
         'none',
       );
+      assert(
+        (await viewport.evaluate((el) => el.clientHeight)) >= 128,
+        'Results retain useful height below the picker controls',
+      );
       await page.waitForFunction(() =>
-        document.querySelector('[role=listbox] [data-scroll-fade="bottom"]'),
+        document.querySelector('[role=listbox] [data-scroll-fade~="bottom"]'),
       );
       await viewport.evaluate((el) => {
         el.scrollTop = 50;
@@ -1811,9 +2378,77 @@ try {
         path: 'artifacts/ui-attachment-picker-compact-light.png',
         animations: 'disabled',
       });
-      await search.fill('Glass Orchard catalog');
+      await popup.getByRole('button', { name: 'Tags', exact: true }).click();
+      const tagSearch = page.getByPlaceholder('Search tags…');
+      await tagSearch.waitFor();
+      await page.waitForFunction(
+        () =>
+          [...document.querySelectorAll('[role=option] [data-context-kind]')].length === 50 &&
+          [...document.querySelectorAll('[role=option] [data-context-kind]')].every(
+            (el) => el.getAttribute('data-context-kind') === 'tag',
+          ),
+      );
+      await tagSearch.fill('Streamer');
+      await popup.getByRole('option', { name: /Streamer/ }).waitFor();
+      await page.waitForFunction(
+        () =>
+          document.querySelectorAll('[role=listbox] [role=option]').length === 1 &&
+          !document.querySelector('[role=listbox] [role=option]')?.hasAttribute('data-disabled'),
+      );
+      await tagSearch.press('ArrowDown');
+      await tagSearch.press('Enter');
       await page
-        .getByRole('option', { name: /tab.*Harbor Library - The Glass Orchard catalog/ })
+        .getByRole('button', { name: 'Remove attachment: Streamer', exact: true })
+        .waitFor();
+      await page.getByRole('button', { name: 'Next context page', exact: true }).click();
+      await page.getByLabel('Context page 2', { exact: true }).waitFor();
+      const secondTag = await popup
+        .getByRole('option')
+        .first()
+        .locator('[data-slot=itemLabel]')
+        .innerText();
+      await popup.getByRole('option').first().click();
+      await page
+        .getByRole('button', { name: `Remove attachment: ${secondTag}`, exact: true })
+        .waitFor();
+      await popup.getByRole('button', { name: 'Review selected context', exact: true }).click();
+      await page.getByPlaceholder('Search selected context…').waitFor();
+      assert.equal(
+        await popup.getByRole('option').count(),
+        2,
+        'Selection survives type changes and pagination',
+      );
+      assert.match(await popup.innerText(), /Streamer/);
+      assert.match(await popup.innerText(), new RegExp(secondTag));
+      await page.screenshot({
+        path: 'artifacts/ui-context-picker-selected-light.png',
+        animations: 'disabled',
+      });
+      await popup.getByRole('button', { name: 'Clear selected context', exact: true }).click();
+      await popup.getByText('No context selected', { exact: true }).waitFor();
+      await popup.getByRole('button', { name: 'Categories', exact: true }).click();
+      await page.getByPlaceholder('Search categories…').waitFor();
+      await page.getByPlaceholder('Search categories…').fill('');
+      await popup.locator('[data-context-kind=category]').first().waitFor();
+      assert.equal(
+        await popup.locator('[data-context-kind]:not([data-context-kind=category])').count(),
+        0,
+      );
+      await page.screenshot({
+        path: 'artifacts/ui-context-picker-categories-light.png',
+        animations: 'disabled',
+      });
+      await popup.getByRole('button', { name: 'Tabs', exact: true }).click();
+      const tabSearch = page.getByPlaceholder('Search tabs…');
+      await tabSearch.waitFor();
+      await tabSearch.fill('Glass Orchard catalog');
+      await page.waitForFunction(
+        () =>
+          document.querySelectorAll('[role=listbox] [role=option]').length === 1 &&
+          !document.querySelector('[role=listbox] [role=option]')?.hasAttribute('data-disabled'),
+      );
+      await page
+        .getByRole('option', { name: /Harbor Library - The Glass Orchard catalog/ })
         .click();
       await page.keyboard.press('Escape');
       await page
@@ -2353,11 +2988,7 @@ try {
       });
       await page.getByAltText('fixture.png', { exact: true }).waitFor();
       await add.click();
-      await page
-        .getByRole('option')
-        .filter({ hasText: 'project · Harbor Library' })
-        .first()
-        .click();
+      await page.getByRole('option').filter({ hasText: 'Harbor Library' }).first().click();
       await page.keyboard.press('Escape');
       await page.screenshot({ path: 'artifacts/ui-composer-plus-320.png', animations: 'disabled' });
       assert.equal(await page.getByText('Local chat', { exact: false }).count(), 0);
@@ -3929,10 +4560,10 @@ try {
       await page.getByRole('heading', { name: 'Workspace assistant' }).waitFor();
       await page.getByRole('button', { name: 'Send', exact: true }).waitFor();
       await page.getByRole('button', { name: 'Add attachments', exact: true }).click();
-      const attachmentSearch = page.getByPlaceholder('Search tabs, projects, tags…');
+      const attachmentSearch = page.getByPlaceholder('Search workspace context…');
       await attachmentSearch.fill('Glass Orchard catalog');
       await page
-        .getByRole('option', { name: /tab.*Harbor Library - The Glass Orchard catalog/ })
+        .getByRole('option', { name: /Harbor Library - The Glass Orchard catalog/ })
         .click();
       await attachmentSearch.fill('Window 2');
       await page.getByRole('option', { name: /window.*Window 2/ }).click();
@@ -3968,7 +4599,7 @@ try {
       await page.getByRole('button', { name: 'Add attachments', exact: true }).click();
       await attachmentSearch.fill('Glass Orchard catalog');
       await page
-        .getByRole('option', { name: /tab.*Harbor Library - The Glass Orchard catalog/ })
+        .getByRole('option', { name: /Harbor Library - The Glass Orchard catalog/ })
         .click();
       await page.keyboard.press('Escape');
       await page
@@ -4173,7 +4804,7 @@ try {
       });
       await page.getByRole('button', { name: 'Open navigation', exact: true }).click();
       await page.getByRole('button', { name: 'Update TabFlow', exact: true }).click();
-      await page.getByRole('heading', { name: 'Activate a new build' }).waitFor();
+      await page.getByRole('heading', { name: 'Update TabFlow', exact: true }).waitFor();
       assert.equal(
         await page.evaluate(() => document.documentElement.scrollWidth > innerWidth),
         false,
@@ -4224,7 +4855,7 @@ try {
         .getByRole('navigation', { name: 'Main navigation' })
         .getByRole('button', { name: 'Update TabFlow', exact: true })
         .click();
-      await page.getByRole('heading', { name: 'Activate a new build' }).waitFor();
+      await page.getByRole('heading', { name: 'Update TabFlow', exact: true }).waitFor();
       await page.screenshot({
         path: 'artifacts/ui-update.png',
         fullPage: true,
@@ -4257,7 +4888,6 @@ try {
       });
       await page.getByRole('button', { name: /Finish update · 3 remaining/ }).click();
       await page.getByRole('button', { name: 'Finish update', exact: true }).click();
-      await page.getByRole('button', { name: 'Review missing tabs', exact: true }).click();
       await page.getByRole('button', { name: 'Resume missing tabs', exact: true }).waitFor();
       await page.evaluate(async () => {
         const thread = {
@@ -5492,29 +6122,45 @@ try {
   }
   assert.deepEqual(errors, []);
   console.log(
-    process.env.TABFLOW_UI_FOCUS === 'docs'
-      ? 'Documentation capture passed: realistic fictional workspace, current UI, seven views, no remote page/model calls, zero renderer errors.'
-      : process.env.TABFLOW_UI_FOCUS === 'attachment-picker'
-        ? 'Attachment picker UI passed: compact bounds, padded search, hidden native scrollbar, edge masks and context search/selection.'
-        : process.env.TABFLOW_UI_FOCUS === 'scroll-fade'
-          ? 'Scroll fade UI passed: no overflow, vertical/horizontal start-middle-end, content growth and resize removal, zero renderer errors.'
-          : process.env.TABFLOW_UI_FOCUS === 'ordering'
-            ? 'Ordering UI passed: immediate category drag in main/sidebar, vertical and horizontal project order after reload, distributed compact footer.'
-            : process.env.TABFLOW_UI_FOCUS === 'compact-ui'
-              ? 'Compact UI passed: full-width sort, aligned select options, autosave/retry, narrow list/detail settings, compact confirmation/review/footer and one attachment menu.'
-              : process.env.TABFLOW_UI_FOCUS === 'drag'
-                ? 'Drag UI passed: whole-row pointer nesting, subtree sibling reorder, root detach, hover dismissal and click/drag separation.'
-                : process.env.TABFLOW_UI_FOCUS === 'layout'
-                  ? 'Layout UI passed: native placement status/fallback, old preferences ignored, settings/chat draft preservation, narrow side-panel and dashboard themes.'
-                  : process.env.TABFLOW_UI_FOCUS === 'trees'
-                    ? 'Tab tree UI passed: five levels, collapse/expand, filtered children, light/dark compact layouts and zero renderer errors.'
-                    : process.env.TABFLOW_UI_FOCUS === 'refresh'
-                      ? 'Refresh UI passed: three delayed background polls preserve enabled controls, search state and row identity.'
-                      : process.env.TABFLOW_UI_FOCUS === 'maintenance'
-                        ? 'Maintenance UI passed: category/project dragging, category and tag maintenance, older paginated Undo/Redo, compact light/dark layouts and zero renderer errors.'
-                        : process.env.TABFLOW_PERF === '1'
-                          ? 'Stress UI passed: 510 tabs, 500 snapshots, 500 operations, route timings and zero renderer errors.'
-                          : 'UI smoke passed: desktop, compact, mobile, search, centered dialog, settings, history, review, mobile assistant, and zero renderer errors.',
+    process.env.TABFLOW_UI_FOCUS === 'branch-hover'
+      ? 'Branch hover passed: SVG stroke and opacity interpolate, intermediate color verified and reduced-motion respected.'
+      : process.env.TABFLOW_UI_FOCUS === 'failure-diagnostics'
+        ? 'Failure diagnostics passed: one-click clipboard report, exact failed-stage attempts, unrelated taxonomy excluded and credentials redacted.'
+        : process.env.TABFLOW_UI_FOCUS === 'long-url'
+          ? 'Long URL chat passed: actual tool read, persisted evidence, page reload and follow-up without validation failure.'
+          : process.env.TABFLOW_UI_FOCUS === 'update-cleanup'
+            ? 'Update page passed: compact layout, cancel/confirm Keep current, reload unblocked in place and interrupted update controls retained.'
+            : process.env.TABFLOW_UI_FOCUS === 'motion-history'
+              ? 'Motion/history passed: opacity-only view reveal, no indicator geometry transition and readable narrow session layout.'
+              : process.env.TABFLOW_UI_FOCUS === 'lazy-loading'
+                ? 'Lazy views passed: immediate text-free spinner, measured content-pane centering, dashboard tabs/projects and side-panel chunks.'
+                : process.env.TABFLOW_UI_FOCUS === 'initial-loading'
+                  ? 'Startup UI passed: delayed loading, no false empty state, refresh continuity and failed-load retry.'
+                  : process.env.TABFLOW_UI_FOCUS === 'ai-sdk'
+                    ? 'AI SDK browser fixture passed: production MV3 UI, streamed tool loop, visible approval, no application, zero renderer errors.'
+                    : process.env.TABFLOW_UI_FOCUS === 'docs'
+                      ? 'Documentation capture passed: realistic fictional workspace, current UI, seven views, no remote page/model calls, zero renderer errors.'
+                      : process.env.TABFLOW_UI_FOCUS === 'attachment-picker'
+                        ? 'Attachment picker UI passed: compact bounds, padded search, hidden native scrollbar, edge masks and context search/selection.'
+                        : process.env.TABFLOW_UI_FOCUS === 'scroll-fade'
+                          ? 'Scroll fade UI passed: no overflow, vertical/horizontal start-middle-end, content growth and resize removal, zero renderer errors.'
+                          : process.env.TABFLOW_UI_FOCUS === 'ordering'
+                            ? 'Ordering UI passed: immediate category drag in main/sidebar, vertical and horizontal project order after reload, distributed compact footer.'
+                            : process.env.TABFLOW_UI_FOCUS === 'compact-ui'
+                              ? 'Compact UI passed: full-width sort, aligned select options, autosave/retry, narrow list/detail settings, compact confirmation/review/footer and one attachment menu.'
+                              : process.env.TABFLOW_UI_FOCUS === 'drag'
+                                ? 'Drag UI passed: whole-row pointer nesting, subtree sibling reorder, root detach, hover dismissal and click/drag separation.'
+                                : process.env.TABFLOW_UI_FOCUS === 'layout'
+                                  ? 'Layout UI passed: native placement status/fallback, old preferences ignored, settings/chat draft preservation, narrow side-panel and dashboard themes.'
+                                  : process.env.TABFLOW_UI_FOCUS === 'trees'
+                                    ? 'Tab tree UI passed: five levels, collapse/expand, filtered children, light/dark compact layouts and zero renderer errors.'
+                                    : process.env.TABFLOW_UI_FOCUS === 'refresh'
+                                      ? 'Refresh UI passed: three delayed background polls preserve enabled controls, search state and row identity.'
+                                      : process.env.TABFLOW_UI_FOCUS === 'maintenance'
+                                        ? 'Maintenance UI passed: category/project dragging, category and tag maintenance, older paginated Undo/Redo, compact light/dark layouts and zero renderer errors.'
+                                        : process.env.TABFLOW_PERF === '1'
+                                          ? 'Stress UI passed: 510 tabs, 500 snapshots, 500 operations, route timings and zero renderer errors.'
+                                          : 'UI smoke passed: desktop, compact, mobile, search, centered dialog, settings, history, review, mobile assistant, and zero renderer errors.',
   );
 } finally {
   await browser.close();

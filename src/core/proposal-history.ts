@@ -2,7 +2,7 @@ import { z } from 'zod';
 import Dexie from 'dexie';
 import * as db from './db';
 import type { CollectionProposal, ProposalRevision } from '../shared/types';
-import { tagHash } from '../shared/tag-analysis';
+import { tagHash } from '../shared/organization/tag-analysis';
 
 const contentHash = ({ updatedAt: _updatedAt, ...value }: CollectionProposal) => tagHash(value);
 

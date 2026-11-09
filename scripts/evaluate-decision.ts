@@ -1,7 +1,7 @@
 // Explicit opt-in: real System One calls with synthetic data, never a browser profile.
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { z } from 'zod';
-import { generateCollectionDraft } from '../src/ai/client';
+import { generateCollectionDraft } from '../src/ai/workflows/generation';
 import { DEFAULTS, newRecord } from '../src/shared/model';
 import type { AppState, CollectionDraft } from '../src/shared/types';
 

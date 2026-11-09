@@ -1,8 +1,8 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { tagSavedProposal, type ProposalTagCheckpoint } from '../src/ai/proposal-tagging';
+import { tagSavedProposal, type ProposalTagCheckpoint } from '../src/ai/workflows/proposal-tagging';
 import { DEFAULTS, newRecord, validateCollectionDraft } from '../src/shared/model';
 import type { AppState, CollectionAnalysis, CollectionProposal } from '../src/shared/types';
-import type { TagAnalysis } from '../src/shared/tag-analysis';
+import type { TagAnalysis } from '../src/shared/organization/tag-analysis';
 
 function fixture(count = 335, assigned = 283) {
   const records = Array.from({ length: count }, (_, index) => ({

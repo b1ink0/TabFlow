@@ -1,7 +1,7 @@
 import * as db from './db';
 import { forgetSessionRecord } from './saved-session';
 import { makeSuspendedURL, newRecord, now, uuid, suspendedInfo } from '../shared/model';
-import { nativeGroupActions } from '../shared/collection';
+import { nativeGroupActions } from '../shared/organization/collection';
 import { errorMessage } from '../shared/types';
 import type {
   AppState,

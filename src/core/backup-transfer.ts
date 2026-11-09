@@ -3,7 +3,7 @@ import {
   BACKUP_CHUNK_CHARACTERS,
   MAX_BACKUP_CHARACTERS,
   backupTextChunk,
-} from '../shared/backup-transfer';
+} from '../shared/backup/backup-transfer';
 
 type Transfer = { id: string; expires: number } & (
   | { kind: 'export'; text: string }

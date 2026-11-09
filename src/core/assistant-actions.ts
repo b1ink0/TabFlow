@@ -1,13 +1,13 @@
 import { z } from 'zod';
-import { workspaceEditDraftSchema } from '../shared/workspace-edits';
-import { validateTabTree } from '../shared/tab-tree';
+import { workspaceEditDraftSchema } from '../shared/workspace/workspace-edits';
+import { validateTabTree } from '../shared/tabs/tab-tree';
 import { consumePermissionReview, permissionContext, permissionPolicy } from './permission-review';
 import * as db from './db';
 import * as engine from './engine';
 import { now, importSnapshot } from '../shared/model';
-import { tagHash } from '../shared/tag-analysis';
+import { tagHash } from '../shared/organization/tag-analysis';
 import type { Plan } from '../shared/types';
-import { actionPresentation } from '../shared/action-presentation';
+import { actionPresentation } from '../shared/workspace/action-presentation';
 import {
   actionCapabilities,
   approvalRuleSchema,
@@ -15,7 +15,7 @@ import {
   assistantExecutionSchema,
   type AssistantChange,
   type MetadataDelta,
-} from '../shared/assistant-actions';
+} from '../shared/assistant/assistant-actions';
 
 const rulesKey = 'assistantApprovalRules';
 export async function approvalRules() {

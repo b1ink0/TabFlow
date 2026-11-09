@@ -1,10 +1,11 @@
+import { answerWorkQuestion } from '../src/ai/runtime/agent';
 import { stubFetch } from './taxonomy-fixture';
-import { CLASSIFICATION_CONTRACT } from '../src/ai/classification';
+import { CLASSIFICATION_CONTRACT } from '../src/ai/workflows/classification';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { z } from 'zod';
 import { reactive } from 'vue';
-import { answerWorkQuestion, generateCollectionDraft, generatePlan } from '../src/ai/client';
-import { requestModelAccess } from '../src/ai/access';
+import { generateCollectionDraft, generatePlan } from '../src/ai/workflows/generation';
+import { requestModelAccess } from '../src/ai/providers/access';
 import { DEFAULTS, newRecord } from '../src/shared/model';
 import type {
   AppState,
@@ -12,15 +13,19 @@ import type {
   CollectionDraft,
   CollectionProposal,
 } from '../src/shared/types';
-import { assistantMessageSchema } from '../src/shared/assistant';
+import { assistantMessageSchema } from '../src/shared/assistant/assistant';
 import {
   collectionAnalysisSchema,
   skipFailedCollectionBatch,
-} from '../src/shared/collection-analysis';
+} from '../src/shared/organization/collection-analysis';
 import { validateCollectionDraft } from '../src/shared/model';
-import { resolveAttachments, searchAttachments } from '../src/shared/assistant-context';
-import { mergeProposalDrafts } from '../src/shared/proposal-edits';
-import { tagHash } from '../src/shared/tag-analysis';
+import {
+  resolveAttachments,
+  searchAttachments,
+  snapshotAttachments,
+} from '../src/shared/assistant/assistant-context';
+import { mergeProposalDrafts } from '../src/shared/organization/proposal-edits';
+import { tagHash } from '../src/shared/organization/tag-analysis';
 
 const record = {
   ...newRecord('https://example.com/reference'),
@@ -91,6 +96,237 @@ const requestSchema = z.object({
 afterEach(() => vi.unstubAllGlobals());
 
 describe('AI workflow coordination', () => {
+  it.each([0, 1, 57])(
+    'keeps a whole-collection tool call inside %i attached occurrences in a 148-tab workspace',
+    async (count) => {
+      const records = Array.from({ length: 148 }, (_, index) => ({
+        ...record,
+        id: `scope-occurrence-${index}`,
+        url: `https://example.test/reference/${index}`,
+      }));
+      const selected = records.slice(0, count).map((item) => item.id);
+      const allowed = new Set(selected);
+      let step = 0;
+      let checkpoint: CollectionAnalysis | undefined;
+      const classified: string[] = [];
+      stubFetch('fetch', async (_url, init) => {
+        const body = requestSchema.parse(JSON.parse(String(init?.body)));
+        if (body.model === 'small') {
+          const data = JSON.parse(body.messages.at(-1)?.content || '{}');
+          expect(data.tabs).toHaveLength(1);
+          expect(allowed.has(data.tabs[0].id)).toBe(true);
+          classified.push(data.tabs[0].id);
+          return text(JSON.stringify({ choice: 'c0', reason: 'Reference', confidence: 0.95 }));
+        }
+        if (body.response_format)
+          return text(JSON.stringify({ summary: 'Selected references', projects: [project] }));
+        if (step++ === 0)
+          return call('prepare_whole_collection_organization', {
+            confirmation: 'prepare_reviewable_proposal',
+          });
+        return text('The selected tabs have a draft.');
+      });
+      const saved = vi.fn(async (draft) => ({
+        ...draft,
+        id: 'scoped-result',
+        createdAt: 1,
+        status: 'pending' as const,
+      }));
+      const run = answerWorkQuestion(
+        { ...app, records },
+        'Organize these Inbox tabs',
+        [],
+        undefined,
+        {
+          context: { projectId: null, selectedRecordIds: selected, scopeRecordIds: selected },
+          onCollectionDraft: saved,
+          collectionCheckpoint: {
+            id: 'scoped-analysis',
+            load: async () => checkpoint,
+            save: async (value) => {
+              expect(value.scope.map((item) => item.id)).toEqual(selected);
+              expect(value.purpose).toBe('scoped');
+              checkpoint = structuredClone(value);
+              return checkpoint;
+            },
+            clear: async () => {
+              checkpoint = undefined;
+            },
+          },
+        },
+      );
+      if (!count) {
+        await expect(run).rejects.toThrow('No eligible open tabs');
+        expect(saved).not.toHaveBeenCalled();
+        expect(classified).toEqual([]);
+        return;
+      }
+      await run;
+      expect(saved).toHaveBeenCalledOnce();
+      expect(saved.mock.calls[0]![0].scopeRecordIds).toEqual(selected);
+      expect(new Set(classified)).toEqual(allowed);
+      expect(classified).toHaveLength(count);
+    },
+  );
+  it('refuses to resume an oversized checkpoint against a smaller attached scope before inference or writes', async () => {
+    const saved = collectionAnalysisSchema.parse({
+      id: 'oversized',
+      createdAt: 1,
+      updatedAt: 1,
+      revision: 1,
+      purpose: 'proposal',
+      instruction: 'Organize tabs',
+      reuseAcceptedTaxonomyOnly: true,
+      scope: [
+        { id: record.id, url: record.url, navigationVersion: 0 },
+        { id: 'outside-selection', url: 'https://example.test/outside', navigationVersion: 0 },
+      ],
+      discoveredIds: [],
+      classifiedIds: [],
+      projects: [],
+      summaries: [],
+      assignments: [],
+      unresolvedRecordIds: [],
+    });
+    const fetch = vi.fn();
+    vi.stubGlobal('fetch', fetch);
+    const save = vi.fn();
+    const before = JSON.stringify(saved);
+    await expect(
+      answerWorkQuestion(app, 'Retry', [], undefined, {
+        context: { projectId: null, selectedRecordIds: [record.id], scopeRecordIds: [record.id] },
+        resume: assistantMessageSchema.parse({
+          id: 'failed',
+          role: 'assistant',
+          content: 'Interrupted',
+          createdAt: 1,
+          collectionAnalysisId: saved.id,
+        }),
+        collectionCheckpoint: { id: saved.id, load: async () => saved, save, clear: vi.fn() },
+      }),
+    ).rejects.toThrow('outside the original attached selection');
+    expect(fetch).not.toHaveBeenCalled();
+    expect(save).not.toHaveBeenCalled();
+    expect(JSON.stringify(saved)).toBe(before);
+    await expect(
+      generateCollectionDraft(app, {
+        recordIds: [record.id],
+        checkpoint: {
+          id: saved.id,
+          load: async () => ({ ...saved, decisionContract: CLASSIFICATION_CONTRACT }),
+          save,
+        },
+      }),
+    ).rejects.toThrow('exceeds the explicitly requested tab scope');
+    expect(fetch).not.toHaveBeenCalled();
+    expect(save).not.toHaveBeenCalled();
+  });
+  it('binds a single chat classification to its original occurrence without asking the model to copy its ID', async () => {
+    const exactId = 'fictional-occurrence-3918e14';
+    const seen = vi.fn();
+    stubFetch('fetch', async (_url, init) => {
+      const request = JSON.parse(String(init?.body));
+      seen();
+      expect(request.response_format.json_schema.schema.properties).not.toHaveProperty(
+        'assignments',
+      );
+      expect(request.response_format.json_schema.schema.properties).not.toHaveProperty('recordId');
+      return text(
+        JSON.stringify({ choice: 'c0', reason: 'Supported reference page', confidence: 0.95 }),
+      );
+    });
+    const draft = await generateCollectionDraft(
+      {
+        ...app,
+        records: [{ ...record, id: exactId }],
+        projects: [{ id: 'p', ...project, revision: 1, updatedAt: 1, maintainReviewQueue: false }],
+        categories: [
+          {
+            id: 'c',
+            projectId: 'p',
+            name: 'Sources',
+            description: 'Reference pages',
+            order: 0,
+            revision: 1,
+            updatedAt: 1,
+          },
+        ],
+      },
+      { reuseAcceptedTaxonomyOnly: true },
+    );
+    expect(draft.assignments.map((entry) => entry.recordId)).toEqual([exactId]);
+    expect(seen).toHaveBeenCalledTimes(1);
+  });
+  it('snapshots reactive Inbox and selected-tab attachments without retaining proxies', () => {
+    const input = reactive([
+      {
+        kind: 'selection',
+        id: 'inbox-selection',
+        label: '57 selected tabs',
+        recordIds: Array.from({ length: 57 }, (_, i) => `occurrence-${i}`),
+      },
+    ]);
+    const saved = snapshotAttachments(input);
+    expect(structuredClone(saved)).toEqual(saved);
+    input[0]!.recordIds.push('later-tab');
+    input[0]!.label = 'Changed selection';
+    expect(saved[0]!.recordIds).toHaveLength(57);
+    expect(saved[0]!.label).toBe('57 selected tabs');
+    expect(() =>
+      snapshotAttachments([
+        { kind: 'selection', id: 'invalid', label: 'Invalid', recordIds: [null] },
+      ]),
+    ).toThrow();
+  });
+  it('finds saved-only and closed-tab tags consistently with attachment search', async () => {
+    const workspace = {
+      ...app,
+      tagVocabulary: ['Saved topic'],
+      records: [{ ...record, live: false, tags: ['Streamer'] }],
+    };
+    const options = searchAttachments(workspace, 'streamer', 0, 50, 'tag');
+    expect(options.items).toMatchObject([{ kind: 'tag', id: 'Streamer' }]);
+    let step = 0;
+    stubFetch('fetch', async (_url, init) => {
+      if (++step === 1) return call('list_tags', { query: '', offset: 0 });
+      const body = requestSchema.parse(JSON.parse(String(init?.body)));
+      expect(JSON.parse(body.messages.at(-1)!.content!)).toMatchObject({
+        tags: [
+          { name: 'Saved topic', count: 0, savedCount: 0 },
+          { name: 'Streamer', count: 0, savedCount: 1 },
+        ],
+      });
+      return text('Both tags are saved, with no currently open tabs.');
+    });
+    await expect(answerWorkQuestion(workspace, 'Find my saved tags')).resolves.toHaveProperty(
+      'answer',
+    );
+  });
+
+  it('filters attachment kinds before pagination rather than filtering a mixed page', () => {
+    const workspace = {
+      ...app,
+      projects: Array.from({ length: 75 }, (_, i) => ({
+        id: `project-${i}`,
+        name: 'Matching project',
+        purpose: '',
+        updatedAt: 0,
+        revision: 0,
+        maintainReviewQueue: false,
+      })),
+      records: [{ ...record, tags: ['Matching tag'] }],
+      tagVocabulary: ['Matching saved tag'],
+    };
+    const tags = searchAttachments(workspace, 'matching', 0, 1, 'tag');
+    expect(tags.items[0]?.kind).toBe('tag');
+    expect(tags.hasMore).toBe(true);
+    expect(searchAttachments(workspace, 'matching', 1, 1, 'tag').items[0]?.kind).toBe('tag');
+    expect(searchAttachments(workspace, 'matching', 0, 50, 'category').items).toEqual([]);
+    expect(searchAttachments(workspace, 'reference', 0, 50, 'tab').items).toMatchObject([
+      { kind: 'tab', id: record.id },
+    ]);
+  });
+
   it('reads a paged tab branch across project boundaries without preparing a mutation', async () => {
     const child = {
       ...record,
@@ -360,7 +596,7 @@ describe('AI workflow coordination', () => {
       };
       const before = structuredClone(saved);
       let checkpoint: CollectionAnalysis | undefined;
-      const rows = new Map<string, import('../src/shared/tag-analysis').TagAnalysis>();
+      const rows = new Map<string, import('../src/shared/organization/tag-analysis').TagAnalysis>();
       let routes = 0;
       let turns = 0,
         tagRequests = 0;
@@ -1547,7 +1783,12 @@ describe('AI workflow coordination', () => {
           .parse(request);
         if (body.tools?.length) {
           toolRounds++;
-          return call('read_workspace', {});
+          return call('list_tabs', {
+            query: `different-search-${toolRounds}`,
+            projectId: null,
+            windowId: null,
+            offset: 0,
+          });
         }
         summaryRequests++;
         expect(body.messages[0]?.role).toBe('system');

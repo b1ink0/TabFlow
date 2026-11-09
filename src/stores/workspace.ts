@@ -6,13 +6,13 @@ import {
   readTabFilters,
   writeTabFilters,
   type TabFilters,
-} from '../shared/tab-filters';
+} from '../shared/tabs/tab-filters';
 import { rpc, type RpcMap } from '../shared/rpc';
-import { backupTextChunk, MAX_BACKUP_CHARACTERS } from '../shared/backup-transfer';
-import { reuseWorkspaceState } from '../shared/state-equality';
-import { tabTreeRows } from '../shared/tab-tree';
+import { backupTextChunk, MAX_BACKUP_CHARACTERS } from '../shared/backup/backup-transfer';
+import { reuseWorkspaceState } from '../shared/utils/state-equality';
+import { tabTreeRows } from '../shared/tabs/tab-tree';
 import { useTabSearch } from '../features/tabs/useTabSearch';
-import { workspaceRows } from '../shared/workspace-navigation';
+import { workspaceRows } from '../shared/workspace/workspace-navigation';
 import {
   errorMessage,
   type AppState,
@@ -33,6 +33,7 @@ export const useWorkspace = defineStore('workspace', () => {
   const browserWindow = typeof window === 'undefined' ? undefined : window;
   const app = ref<AppState>(),
     loading = ref(false),
+    loadError = ref(''),
     notice = ref(''),
     notification = ref<{ sequence: number; message: string; error: boolean }>(),
     search = ref(''),
@@ -232,6 +233,7 @@ export const useWorkspace = defineStore('workspace', () => {
   async function loadState() {
     // Background refresh keeps an already usable workspace interactive.
     loading.value = !app.value;
+    loadError.value = '';
     try {
       const incoming = await rpc('state', undefined);
       app.value = reuseWorkspaceState(app.value, incoming);
@@ -239,6 +241,9 @@ export const useWorkspace = defineStore('workspace', () => {
       const retainedSelection = [...selected.value].filter((id) => liveIds.has(id));
       if (retainedSelection.length !== selected.value.size)
         selected.value = new Set(retainedSelection);
+    } catch (error) {
+      loadError.value = errorMessage(error);
+      throw error;
     } finally {
       loading.value = false;
     }
@@ -440,6 +445,7 @@ export const useWorkspace = defineStore('workspace', () => {
     draggingTabs,
     app,
     loading,
+    loadError,
     notice,
     notification,
     search,

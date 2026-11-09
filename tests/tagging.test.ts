@@ -1,13 +1,13 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { analyzeTags } from '../src/ai/tagging';
-import { generateCollectionDraft } from '../src/ai/client';
+import { analyzeTags } from '../src/ai/workflows/tagging';
+import { generateCollectionDraft } from '../src/ai/workflows/generation';
 import {
   resolveTagReview,
   orderTagCandidates,
   tagEvidence,
   tagEvidenceKey,
   type TagAnalysis,
-} from '../src/shared/tag-analysis';
+} from '../src/shared/organization/tag-analysis';
 import { DEFAULTS, newRecord } from '../src/shared/model';
 import type { AppState, CollectionAnalysis } from '../src/shared/types';
 

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import UiReorderList from '../../ui/UiReorderList.vue';
-import type { ReorderEvent } from '../../shared/reorder';
+import type { ReorderEvent } from '../../shared/utils/reorder';
 import {
   PhPlus as Plus,
   PhSidebarSimple as PanelLeftClose,
@@ -11,8 +11,8 @@ import UiButton from '../../ui/UiButton.vue';
 import UiThemeToggle from '../../ui/UiThemeToggle.vue';
 import UiScrollArea from '../../ui/UiScrollArea.vue';
 import { useWorkspace } from '../../stores/workspace';
-import { projectColorStyle } from '../../shared/category-colors';
-import { cn } from '../../shared/cn';
+import { projectColorStyle } from '../../shared/tabs/category-colors';
+import { cn } from '../../shared/utils/cn';
 import { useReorderGesture, droppedOrder } from './useReorderGesture';
 defineProps<{ collapsed?: boolean }>();
 const emit = defineEmits<{ createProject: []; navigate: []; toggle: [] }>();

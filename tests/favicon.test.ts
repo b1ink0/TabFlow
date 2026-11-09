@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
-import { validFavicon } from '../src/shared/favicon';
-import { parseTagSelection } from '../src/shared/tags';
+import { validFavicon } from '../src/shared/tabs/favicon';
+import { parseTagSelection } from '../src/shared/tabs/tags';
 describe('persistent favicon and tag boundaries', () => {
   it('accepts only bounded 32px PNGs, never remote or executable icons', () => {
     const png = `data:image/png;base64,${readFileSync(new URL('../public/icons/32.png', import.meta.url)).toString('base64')}`;
