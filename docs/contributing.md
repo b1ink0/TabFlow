@@ -43,13 +43,28 @@ The capture uses the production UI with a local fixture bridge, believable ficti
 
 Playwright's installed Chromium is the default. `TABFLOW_CHROMIUM_PATH` optionally selects another executable. `TABFLOW_CHROMIUM_CHANNEL` selects a UI-test channel. Native extension tests require a full extension-capable Chromium build. Inspect the final images before publication.
 
+<details>
+<summary>Use a stable extension ID for local development and builds</summary>
+
+Copy `.env.example` to `.env.local` and set `TABFLOW_EXTENSION_KEY` to the public manifest key you want to use. WXT reads it for both `bun run dev` and `bun run build`. Leave it empty to let Chromium derive an unpacked ID from the extension directory.
+
+To use TabFlow's release identity, copy `key` from a release's generated `manifest.json`, or use this same public value:
+
+```dotenv
+TABFLOW_EXTENSION_KEY=MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA0EqD4CkRUer/Fw27VBEki6Kxqq1OsudV5bFxp7HocxP79Bx1T7CoC0f7sF7/6u8gMq04ENEr66q/P3efVZxAO1tR3asEsSlZMyDXSh6iUvBafGyXNvi2MbXDRt75fTNvFHyph5nG8v7UMIEwTB9zhWgm480ieH6pay9lwxxGoL8qZrQAzO5Xyzi9V20a+RgwtSfg1rB9iTdYDKcyGa/KHmMGtlHWNzFkwiFpJ3L3IEQJ/eKcDNRIpQP32vjMEDVALaNX61s87egnGrP7ECdm6gAku3AOvUOnjmfIFfXCj8IU4QJYiqFsNxgd6jTwTDM5r7WdMxcUeABc2cRg0hDAlwIDAQAB
+```
+
+This key is public identity configuration, not a private signing credential. `.env.local` stays local. The generated extension manifest includes the configured public key.
+
+</details>
+
 ## Packaging
 
 `package.json` is the version source for the generated extension manifest and application state. Update its `version` for each release, then rebuild.
 
 `bun run zip` builds the extension and creates `.output/tabflow-<version>-chrome.zip`, with `manifest.json` at the archive root. This is the extension-only release asset. Extract it before loading it unpacked.
 
-`bun run package` creates `TabFlow-<version>.zip` containing public source and the ready-to-load extension. It rejects a build whose manifest version differs from the package version. The packager uses explicit publication roots, excluding temporary artifacts, profiles and private notes. The public manifest key keeps unpacked extension identity stable and is not a private signing credential.
+`bun run package` creates `TabFlow-<version>.zip` containing public source and the ready-to-load extension. It rejects a build whose manifest version differs from the package version. The packager uses explicit publication roots, excluding temporary artifacts, profiles and private notes. An optional public manifest key keeps unpacked extension identity stable.
 
 The publication audit reads both working files and staged copies. Review the complete proposed publication, including images and archives. Test and package commands do not commit or publish.
 

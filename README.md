@@ -11,7 +11,7 @@
   <a href="#development">Development</a>
 </p>
 
-TabFlow is a Manifest V3 extension for Chromium-based browsers. Manage tabs across windows from a side panel: organize projects, keep related pages together, and save a session to return to later.
+TabFlow is a Manifest V3 extension for Chromium-based browsers. Manage large tab collections across windows from a side panel: organize projects, keep related pages together, and save a session to return to later.
 
 ![TabFlow sidebar with projects, categories and nested references](docs/images/overview.png)
 
@@ -21,10 +21,8 @@ TabFlow is a Manifest V3 extension for Chromium-based browsers. Manage tabs acro
 - **Connected research.** Keep related pages in named, collapsible branches with up to five levels. Reorder tabs, categories and projects with drag-and-drop.
 - **Search and tags.** Find tabs across windows by title, address, notes, tags and available cached page text.
 - **Saved sessions.** Save snapshots, resume missing tabs, review changes and export portable backups.
-- **Tab suspension.** Put inactive pages to sleep while retaining their original addresses. Configure automatic suspension and site exceptions.
+- **Tab suspension.** Reduce memory use by keeping inactive tabs in lightweight placeholders with their original addresses preserved. Configure automatic suspension and site exceptions.
 - **Optional AI assistance.** Ask about selected tabs, generate organization drafts, suggest tags and edit the workspace through an OpenAI-compatible endpoint.
-
-Everyday tab management, suspension and snapshots work without an AI model.
 
 ![Project tabs in the full workspace](docs/images/projects.png)
 

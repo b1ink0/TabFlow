@@ -8,6 +8,7 @@ test-results/
 playwright-report/
 *.pem
 .env*
+!.env.example
 /TabFlow.zip
 /TabFlow-*.zip
 *.7z

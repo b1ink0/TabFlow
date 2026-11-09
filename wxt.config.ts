@@ -25,8 +25,9 @@ export default defineConfig({
     ],
   }),
   manifest: ({ command }) => ({
-    // Public development identity; retain it so placeholder URLs survive folder moves.
-    key: 'MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA0EqD4CkRUer/Fw27VBEki6Kxqq1OsudV5bFxp7HocxP79Bx1T7CoC0f7sF7/6u8gMq04ENEr66q/P3efVZxAO1tR3asEsSlZMyDXSh6iUvBafGyXNvi2MbXDRt75fTNvFHyph5nG8v7UMIEwTB9zhWgm480ieH6pay9lwxxGoL8qZrQAzO5Xyzi9V20a+RgwtSfg1rB9iTdYDKcyGa/KHmMGtlHWNzFkwiFpJ3L3IEQJ/eKcDNRIpQP32vjMEDVALaNX61s87egnGrP7ECdm6gAku3AOvUOnjmfIFfXCj8IU4QJYiqFsNxgd6jTwTDM5r7WdMxcUeABc2cRg0hDAlwIDAQAB',
+    ...(process.env.TABFLOW_EXTENSION_KEY?.trim()
+      ? { key: process.env.TABFLOW_EXTENSION_KEY.trim() }
+      : {}),
     name: 'TabFlow',
     description:
       'Visible tabs, project windows, local AI organization, lightweight suspension, and recoverable snapshots.',

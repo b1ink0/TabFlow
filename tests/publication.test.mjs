@@ -8,6 +8,7 @@ describe('publication boundary', () => {
   it('allows public source/docs and excludes private context, exports and signing material', () => {
     for (const name of [
       'README.md',
+      '.env.example',
       '.gitattributes',
       '.husky/pre-commit',
       'AGENTS.md',
@@ -24,6 +25,9 @@ describe('publication boundary', () => {
       'artifacts/backup.json',
       'docs/export.json',
       'src/.env',
+      '.env.local',
+      '.env.production',
+      'src/.env.example',
       'src/config.local.json',
       'tests/fixture.har',
       'public/private.pem',

@@ -3,6 +3,7 @@ import { join, relative, sep } from 'node:path';
 
 const rootFiles = new Set([
   '.gitignore',
+  '.env.example',
   '.gitattributes',
   '.prettierignore',
   '.prettierrc.json',
@@ -39,6 +40,7 @@ const privateSegments = new Set([
 ]);
 
 export function isPublicationFile(name) {
+  if (name === '.env.example') return true;
   const parts = name.split('/');
   if (parts.some((part) => privateSegments.has(part) || part.startsWith('.env'))) return false;
   if (parts.length === 1) return rootFiles.has(name);

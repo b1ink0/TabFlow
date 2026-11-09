@@ -61,4 +61,4 @@ Approval policy belongs to the chat: manual approval, delegated exact-action rev
 
 Nuxt UI and Reka provide interaction primitives, with product adapters in `src/ui`. Feature views share semantic theme tokens. Browser APIs remain in the coordinator and platform adapters rather than presentation primitives.
 
-Build configuration composes extension metadata and UI assets. The public manifest key keeps unpacked extension identity stable. Documentation and test fixtures run outside extension entry points, with temporary storage and fictional data. They are not bundled into production output.
+Build configuration composes extension metadata and UI assets. An optional public manifest key from `TABFLOW_EXTENSION_KEY` keeps unpacked extension identity stable in development and production builds. Documentation and test fixtures run outside extension entry points, with temporary storage and fictional data. They are not bundled into production output.
