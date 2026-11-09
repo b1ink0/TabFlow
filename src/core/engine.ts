@@ -104,10 +104,32 @@ import {
 } from './saved-session';
 
 const origin = typeof chrome === 'undefined' ? '' : chrome.runtime.getURL('').replace(/\/$/, '');
-let chain: Promise<unknown> = Promise.resolve();
-export const serialized = <T>(task: () => Promise<T>): Promise<T> => {
-  const result = chain.then(task);
-  chain = result.catch(() => {});
+const backgroundTasks: Array<() => Promise<void>> = [],
+  interactiveTasks: Array<() => Promise<void>> = [];
+let draining = false;
+export const serialized = <T>(task: () => Promise<T>, interactive = false): Promise<T> => {
+  const result = new Promise<T>((resolve, reject) => {
+    (interactive ? interactiveTasks : backgroundTasks).push(async () => {
+      try {
+        resolve(await task());
+      } catch (error) {
+        reject(error);
+      }
+    });
+  });
+  if (!draining) {
+    draining = true;
+    void (async () => {
+      let burst = 0;
+      while (backgroundTasks.length || interactiveTasks.length) {
+        const immediate = interactiveTasks.length && (burst < 4 || !backgroundTasks.length);
+        const next = (immediate ? interactiveTasks : backgroundTasks).shift()!;
+        burst = immediate ? burst + 1 : 0;
+        await next();
+      }
+      draining = false;
+    })();
+  }
   return result;
 };
 export async function settings(): Promise<Settings> {

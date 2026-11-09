@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue';
 import { VueDraggable, type DraggableEvent } from 'vue-draggable-plus';
-import { useDebounceFn, useStorage } from '@vueuse/core';
+import { useStorage } from '@vueuse/core';
 import { PhDotsThree as Ellipsis, PhSparkle as Sparkles } from '@phosphor-icons/vue';
 import UTabs from '@nuxt/ui/components/Tabs.vue';
 import UDropdownMenu from '@nuxt/ui/components/DropdownMenu.vue';
@@ -261,8 +261,10 @@ async function restoreCategoryChange() {
     await store.refresh();
   });
 }
+let revealRevision = 0;
 async function revealCurrent(automatic = false, recordId?: string) {
   if (automatic && (store.search || store.hasFilters || selecting.value || dialog.current)) return;
+  const revision = ++revealRevision;
   const record = store.records.find((item) =>
     recordId ? item.id === recordId : item.active && item.windowId === currentWindowId.value,
   );
@@ -270,21 +272,39 @@ async function revealCurrent(automatic = false, recordId?: string) {
     store.notify('No active tab is available in this window.');
     return;
   }
+  const existing = navigator.value?.querySelector<HTMLElement>(
+    `[data-workspace-record-id="${CSS.escape(record.id)}"]`,
+  );
+  const existingScroller =
+    navigator.value?.closest('[data-reka-scroll-area-viewport]') ||
+    navigator.value?.closest('main');
+  if (automatic && existing && existingScroller) {
+    const bounds = existing.getBoundingClientRect(),
+      viewport = existingScroller.getBoundingClientRect();
+    const toolbar =
+      navigator.value?.querySelector<HTMLElement>('[data-workspace-tools]')?.offsetHeight || 0;
+    if (bounds.height && bounds.top >= viewport.top + toolbar && bounds.bottom <= viewport.bottom)
+      return;
+  }
   const ancestors = new Set(tabAncestors(record.id, store.records));
-  store.collapsedBranches = store.collapsedBranches.filter((id) => !ancestors.has(id));
-  search.value = '';
-  store.clearFilters();
+  if (store.collapsedBranches.some((id) => ancestors.has(id)))
+    store.collapsedBranches = store.collapsedBranches.filter((id) => !ancestors.has(id));
+  if (store.search) search.value = '';
+  if (store.hasFilters) store.clearFilters();
   const member = memberMap.value.get(record.id);
   if (member?.projectId) {
     projectMode.value = true;
-    openProjects.value = [...new Set([...openProjects.value, member.projectId])];
+    if (!openProjects.value.includes(member.projectId))
+      openProjects.value = [...openProjects.value, member.projectId];
     activeProjectId.value = member.projectId;
     await nextTick();
+    if (revision !== revealRevision) return;
     const section = projectViews.value
       .find((view) => view.project.id === member.projectId)
       ?.sections.find((item) => item.records.some((row) => row.id === record.id));
     if (section) {
-      closedCategories.value = closedCategories.value.filter((id) => id !== section.id);
+      if (closedCategories.value.includes(section.id))
+        closedCategories.value = closedCategories.value.filter((id) => id !== section.id);
       limits.value[section.id] = Math.max(
         limits.value[section.id] || 8,
         section.records.findIndex((item) => item.id === record.id) + 1,
@@ -295,11 +315,13 @@ async function revealCurrent(automatic = false, recordId?: string) {
       store.notify('This tab no longer has a browser window. Refresh the workspace.');
       return;
     }
-    chooseScope({ kind: 'window', windowId: record.windowId });
+    if (projectMode.value || !rows.value.some((item) => item.id === record.id))
+      chooseScope({ kind: 'window', windowId: record.windowId });
     await nextTick();
     shown.value = Math.max(35, rows.value.findIndex((item) => item.id === record.id) + 1);
   }
   await nextTick();
+  if (revision !== revealRevision) return;
   const element = [
     ...(navigator.value?.querySelectorAll<HTMLElement>('[data-workspace-record-id]') || []),
   ].find((item) => item.dataset.workspaceRecordId === record.id);
@@ -309,10 +331,18 @@ async function revealCurrent(automatic = false, recordId?: string) {
   if (element && scroller) {
     const toolbarHeight =
       navigator.value?.querySelector<HTMLElement>('[data-workspace-tools]')?.offsetHeight || 0;
-    scroller.scrollTop +=
-      element.getBoundingClientRect().top -
-      scroller.getBoundingClientRect().top -
-      (scroller.clientHeight + toolbarHeight - element.offsetHeight) / 2;
+    const bounds = element.getBoundingClientRect(),
+      viewport = scroller.getBoundingClientRect();
+    if (automatic) {
+      if (bounds.top < viewport.top + toolbarHeight)
+        scroller.scrollTop += bounds.top - viewport.top - toolbarHeight;
+      else if (bounds.bottom > viewport.bottom)
+        scroller.scrollTop += bounds.bottom - viewport.bottom;
+    } else
+      scroller.scrollTop +=
+        bounds.top -
+        viewport.top -
+        (scroller.clientHeight + toolbarHeight - element.offsetHeight) / 2;
   }
   if (!automatic)
     element
@@ -430,14 +460,20 @@ const batchActions = computed(() => [
 const memberships = computed(() => store.app?.memberships || []);
 const memberMap = computed(() => new Map(memberships.value.map((item) => [item.recordId, item])));
 const projects = computed(() => store.orderedProjects);
-const refreshActivation = useDebounceFn((info: chrome.tabs.OnActivatedInfo) => {
-  if (!document.hidden)
-    void store.run(async () => {
-      await store.refresh();
-      if (followActiveTab.value && info.windowId === currentWindowId.value)
-        await revealCurrent(true);
-    });
-}, 120);
+const refreshActivation = (info: chrome.tabs.OnActivatedInfo) => {
+  if (document.hidden) return;
+  const id = store.noteTabActivated(info);
+  void store.run(async () => {
+    if (!id) await store.refresh();
+    const target =
+      id ||
+      store.records.find(
+        (record) => record.tabId === info.tabId && record.windowId === info.windowId,
+      )?.id;
+    if (target && followActiveTab.value && info.windowId === currentWindowId.value)
+      await revealCurrent(true, target);
+  });
+};
 onUnmounted(() => chrome.tabs?.onActivated?.removeListener(refreshActivation));
 const rows = computed(() =>
   semanticOrder(

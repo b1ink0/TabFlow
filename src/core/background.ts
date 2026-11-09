@@ -596,7 +596,7 @@ export function startBackground() {
     const response =
       request.type === 'resolvePermissionReview'
         ? resolvePermissionReview(request.payload.id)
-        : engine.serialized(() => route(request, sender));
+        : engine.serialized(() => route(request, sender), request.type === 'focus');
     void response.then(
       (value) => {
         if (

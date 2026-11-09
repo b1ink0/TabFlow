@@ -1467,6 +1467,70 @@ try {
       { state, base, version: applicationVersion },
     );
     let delayedViewChunks = 0;
+    if (process.env.TABFLOW_UI_FOCUS === 'activation') {
+      await page.goto(`${base}/sidepanel.html`);
+      await page.getByRole('button', { name: 'Projects', exact: true }).waitFor();
+      await page.evaluate(() => window.__tabTreeFixture());
+      await activateWorkspaceAction(page, 'Refresh workspace');
+      await page.getByRole('button', { name: 'Projects', exact: true }).click();
+      const project = page.getByRole('button', { name: /^Harbor Library\b/ });
+      if ((await project.getAttribute('aria-expanded')) !== 'true') await project.click();
+      const root = page.locator('[data-workspace-record-id="record-0"]');
+      const leaf = page.locator('[data-workspace-record-id="record-4"]');
+      await leaf.waitFor();
+      await page.waitForTimeout(300);
+      const baseline = await page.evaluate(() => ({
+        top: document.querySelector('[data-workspace-record-id="record-4"]').getBoundingClientRect()
+          .top,
+        reads: window.__stateReplyCount,
+      }));
+      for (const id of ['record-2', 'record-0', 'record-3', 'record-4']) {
+        await page.evaluate((id) => window.__activateFixtureTab(id), id);
+        await page
+          .locator(`[data-workspace-record-id="${id}"] button[aria-current=page]`)
+          .waitFor();
+        assert.equal(await leaf.evaluate((node) => node.getBoundingClientRect().top), baseline.top);
+        assert.equal(
+          await root.getByRole('button', { name: 'Collapse tab branch', exact: true }).count(),
+          1,
+        );
+      }
+      assert.equal(await page.evaluate(() => window.__stateReplyCount), baseline.reads);
+      await page.evaluate(() => {
+        window.__stateReplyDelay = 2000;
+      });
+      await root
+        .locator('button')
+        .filter({ has: page.locator('.text-ink') })
+        .first()
+        .click();
+      await root.locator('button[aria-current=page]').waitFor({ timeout: 1000 });
+      assert.equal(await page.evaluate(() => window.__stateReplyCount), baseline.reads);
+      await page.evaluate(() => {
+        window.__stateReplyDelay = 0;
+      });
+      await root.getByRole('button', { name: 'Collapse tab branch', exact: true }).click();
+      await leaf.waitFor({ state: 'hidden' });
+      await page.evaluate(() => window.__activateFixtureTab('record-4'));
+      await leaf.locator('button[aria-current=page]').waitFor();
+      await page.screenshot({ path: 'artifacts/ui-activation-stable.png', animations: 'disabled' });
+      await page.setViewportSize({ width: 420, height: 900 });
+      await page.waitForTimeout(300);
+      const compactTop = await leaf.evaluate((node) => node.getBoundingClientRect().top);
+      await page.evaluate(() => window.__activateFixtureTab('record-2'));
+      await page
+        .locator('[data-workspace-record-id="record-2"] button[aria-current=page]')
+        .waitFor();
+      assert.equal(await leaf.evaluate((node) => node.getBoundingClientRect().top), compactTop);
+      await page.screenshot({
+        path: 'artifacts/ui-activation-compact.png',
+        animations: 'disabled',
+      });
+      console.log(
+        'Activation fixture passed: immediate native-event selection, stationary expanded rows, no state reads and hidden ancestor reveal.',
+      );
+      continue;
+    }
     if (process.env.TABFLOW_UI_FOCUS === 'branch-hover') {
       await page.goto(`${base}/dashboard.html#tabs`);
       await page.getByRole('searchbox', { name: 'Search tabs', exact: true }).waitFor();
@@ -3623,12 +3687,25 @@ try {
       await sidebarLeaf.waitFor({ state: 'hidden' });
       await page.evaluate(() => window.__activateFixtureTab('record-4'));
       await sidebarLeaf.locator('button[aria-current=page]').waitFor();
+      const stationaryTop = await sidebarLeaf.evaluate(
+        (element) => element.getBoundingClientRect().top,
+      );
+      await page.evaluate(() => window.__activateFixtureTab('record-3'));
+      await page
+        .locator('[data-workspace-record-id="record-3"] button[aria-current=page]')
+        .waitFor();
+      assert.equal(
+        await sidebarLeaf.evaluate((element) => element.getBoundingClientRect().top),
+        stationaryTop,
+      );
+      await sidebarLeaf.waitFor({ state: 'visible' });
       const beforeActivation = await page.evaluate(() => window.__stateReplyCount);
       await page
         .getByRole('searchbox', { name: 'Search tabs', exact: true })
         .fill('no matching branch');
       await page.evaluate(() => window.__activateFixtureTab('record-0'));
-      await page.waitForFunction((before) => window.__stateReplyCount > before, beforeActivation);
+      await page.waitForTimeout(180);
+      assert.equal(await page.evaluate(() => window.__stateReplyCount), beforeActivation);
       assert.equal(
         await page.getByRole('searchbox', { name: 'Search tabs', exact: true }).inputValue(),
         'no matching branch',
@@ -6122,45 +6199,47 @@ try {
   }
   assert.deepEqual(errors, []);
   console.log(
-    process.env.TABFLOW_UI_FOCUS === 'branch-hover'
-      ? 'Branch hover passed: SVG stroke and opacity interpolate, intermediate color verified and reduced-motion respected.'
-      : process.env.TABFLOW_UI_FOCUS === 'failure-diagnostics'
-        ? 'Failure diagnostics passed: one-click clipboard report, exact failed-stage attempts, unrelated taxonomy excluded and credentials redacted.'
-        : process.env.TABFLOW_UI_FOCUS === 'long-url'
-          ? 'Long URL chat passed: actual tool read, persisted evidence, page reload and follow-up without validation failure.'
-          : process.env.TABFLOW_UI_FOCUS === 'update-cleanup'
-            ? 'Update page passed: compact layout, cancel/confirm Keep current, reload unblocked in place and interrupted update controls retained.'
-            : process.env.TABFLOW_UI_FOCUS === 'motion-history'
-              ? 'Motion/history passed: opacity-only view reveal, no indicator geometry transition and readable narrow session layout.'
-              : process.env.TABFLOW_UI_FOCUS === 'lazy-loading'
-                ? 'Lazy views passed: immediate text-free spinner, measured content-pane centering, dashboard tabs/projects and side-panel chunks.'
-                : process.env.TABFLOW_UI_FOCUS === 'initial-loading'
-                  ? 'Startup UI passed: delayed loading, no false empty state, refresh continuity and failed-load retry.'
-                  : process.env.TABFLOW_UI_FOCUS === 'ai-sdk'
-                    ? 'AI SDK browser fixture passed: production MV3 UI, streamed tool loop, visible approval, no application, zero renderer errors.'
-                    : process.env.TABFLOW_UI_FOCUS === 'docs'
-                      ? 'Documentation capture passed: realistic fictional workspace, current UI, seven views, no remote page/model calls, zero renderer errors.'
-                      : process.env.TABFLOW_UI_FOCUS === 'attachment-picker'
-                        ? 'Attachment picker UI passed: compact bounds, padded search, hidden native scrollbar, edge masks and context search/selection.'
-                        : process.env.TABFLOW_UI_FOCUS === 'scroll-fade'
-                          ? 'Scroll fade UI passed: no overflow, vertical/horizontal start-middle-end, content growth and resize removal, zero renderer errors.'
-                          : process.env.TABFLOW_UI_FOCUS === 'ordering'
-                            ? 'Ordering UI passed: immediate category drag in main/sidebar, vertical and horizontal project order after reload, distributed compact footer.'
-                            : process.env.TABFLOW_UI_FOCUS === 'compact-ui'
-                              ? 'Compact UI passed: full-width sort, aligned select options, autosave/retry, narrow list/detail settings, compact confirmation/review/footer and one attachment menu.'
-                              : process.env.TABFLOW_UI_FOCUS === 'drag'
-                                ? 'Drag UI passed: whole-row pointer nesting, subtree sibling reorder, root detach, hover dismissal and click/drag separation.'
-                                : process.env.TABFLOW_UI_FOCUS === 'layout'
-                                  ? 'Layout UI passed: native placement status/fallback, old preferences ignored, settings/chat draft preservation, narrow side-panel and dashboard themes.'
-                                  : process.env.TABFLOW_UI_FOCUS === 'trees'
-                                    ? 'Tab tree UI passed: five levels, collapse/expand, filtered children, light/dark compact layouts and zero renderer errors.'
-                                    : process.env.TABFLOW_UI_FOCUS === 'refresh'
-                                      ? 'Refresh UI passed: three delayed background polls preserve enabled controls, search state and row identity.'
-                                      : process.env.TABFLOW_UI_FOCUS === 'maintenance'
-                                        ? 'Maintenance UI passed: category/project dragging, category and tag maintenance, older paginated Undo/Redo, compact light/dark layouts and zero renderer errors.'
-                                        : process.env.TABFLOW_PERF === '1'
-                                          ? 'Stress UI passed: 510 tabs, 500 snapshots, 500 operations, route timings and zero renderer errors.'
-                                          : 'UI smoke passed: desktop, compact, mobile, search, centered dialog, settings, history, review, mobile assistant, and zero renderer errors.',
+    process.env.TABFLOW_UI_FOCUS === 'activation'
+      ? 'Activation checks passed at desktop and side-panel widths with zero renderer errors.'
+      : process.env.TABFLOW_UI_FOCUS === 'branch-hover'
+        ? 'Branch hover passed: SVG stroke and opacity interpolate, intermediate color verified and reduced-motion respected.'
+        : process.env.TABFLOW_UI_FOCUS === 'failure-diagnostics'
+          ? 'Failure diagnostics passed: one-click clipboard report, exact failed-stage attempts, unrelated taxonomy excluded and credentials redacted.'
+          : process.env.TABFLOW_UI_FOCUS === 'long-url'
+            ? 'Long URL chat passed: actual tool read, persisted evidence, page reload and follow-up without validation failure.'
+            : process.env.TABFLOW_UI_FOCUS === 'update-cleanup'
+              ? 'Update page passed: compact layout, cancel/confirm Keep current, reload unblocked in place and interrupted update controls retained.'
+              : process.env.TABFLOW_UI_FOCUS === 'motion-history'
+                ? 'Motion/history passed: opacity-only view reveal, no indicator geometry transition and readable narrow session layout.'
+                : process.env.TABFLOW_UI_FOCUS === 'lazy-loading'
+                  ? 'Lazy views passed: immediate text-free spinner, measured content-pane centering, dashboard tabs/projects and side-panel chunks.'
+                  : process.env.TABFLOW_UI_FOCUS === 'initial-loading'
+                    ? 'Startup UI passed: delayed loading, no false empty state, refresh continuity and failed-load retry.'
+                    : process.env.TABFLOW_UI_FOCUS === 'ai-sdk'
+                      ? 'AI SDK browser fixture passed: production MV3 UI, streamed tool loop, visible approval, no application, zero renderer errors.'
+                      : process.env.TABFLOW_UI_FOCUS === 'docs'
+                        ? 'Documentation capture passed: realistic fictional workspace, current UI, seven views, no remote page/model calls, zero renderer errors.'
+                        : process.env.TABFLOW_UI_FOCUS === 'attachment-picker'
+                          ? 'Attachment picker UI passed: compact bounds, padded search, hidden native scrollbar, edge masks and context search/selection.'
+                          : process.env.TABFLOW_UI_FOCUS === 'scroll-fade'
+                            ? 'Scroll fade UI passed: no overflow, vertical/horizontal start-middle-end, content growth and resize removal, zero renderer errors.'
+                            : process.env.TABFLOW_UI_FOCUS === 'ordering'
+                              ? 'Ordering UI passed: immediate category drag in main/sidebar, vertical and horizontal project order after reload, distributed compact footer.'
+                              : process.env.TABFLOW_UI_FOCUS === 'compact-ui'
+                                ? 'Compact UI passed: full-width sort, aligned select options, autosave/retry, narrow list/detail settings, compact confirmation/review/footer and one attachment menu.'
+                                : process.env.TABFLOW_UI_FOCUS === 'drag'
+                                  ? 'Drag UI passed: whole-row pointer nesting, subtree sibling reorder, root detach, hover dismissal and click/drag separation.'
+                                  : process.env.TABFLOW_UI_FOCUS === 'layout'
+                                    ? 'Layout UI passed: native placement status/fallback, old preferences ignored, settings/chat draft preservation, narrow side-panel and dashboard themes.'
+                                    : process.env.TABFLOW_UI_FOCUS === 'trees'
+                                      ? 'Tab tree UI passed: five levels, collapse/expand, filtered children, light/dark compact layouts and zero renderer errors.'
+                                      : process.env.TABFLOW_UI_FOCUS === 'refresh'
+                                        ? 'Refresh UI passed: three delayed background polls preserve enabled controls, search state and row identity.'
+                                        : process.env.TABFLOW_UI_FOCUS === 'maintenance'
+                                          ? 'Maintenance UI passed: category/project dragging, category and tag maintenance, older paginated Undo/Redo, compact light/dark layouts and zero renderer errors.'
+                                          : process.env.TABFLOW_PERF === '1'
+                                            ? 'Stress UI passed: 510 tabs, 500 snapshots, 500 operations, route timings and zero renderer errors.'
+                                            : 'UI smoke passed: desktop, compact, mobile, search, centered dialog, settings, history, review, mobile assistant, and zero renderer errors.',
   );
 } finally {
   await browser.close();

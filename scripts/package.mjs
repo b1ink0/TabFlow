@@ -3,12 +3,16 @@ import { mkdirSync, readFileSync, readdirSync, statSync, writeFileSync } from 'n
 import { dirname, join, relative, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { execFileSync } from 'node:child_process';
-import { publicationFiles } from './public-files.mjs';
+import { createHash } from 'node:crypto';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const { version } = JSON.parse(readFileSync(join(root, 'package.json'), 'utf8'));
 const build = join(root, '.output', 'chrome-mv3');
 const output = join(root, `TabFlow-${version}.zip`);
+execFileSync(process.execPath, [join(root, 'node_modules/wxt/bin/wxt.mjs'), 'build'], {
+  cwd: root,
+  stdio: 'inherit',
+});
 execFileSync(process.execPath, [join(root, 'scripts/audit-public.mjs')], {
   cwd: root,
   stdio: 'inherit',
@@ -37,13 +41,10 @@ function filesUnder(directory, skip = new Set()) {
 }
 
 const entries = [];
-for (const { path, name } of publicationFiles(root)) {
-  entries.push({ path, name: `tabflow/${name}` });
-}
 for (const path of filesUnder(build)) {
   entries.push({
     path,
-    name: `tabflow/ready-to-load/${relative(build, path).split(sep).join('/')}`,
+    name: relative(build, path).split(sep).join('/'),
   });
 }
 entries.sort((a, b) => a.name.localeCompare(b.name));
@@ -120,13 +121,17 @@ end.writeUInt32LE(centralDirectory.length, 12);
 end.writeUInt32LE(offset, 16);
 const archive = Buffer.concat([...localParts, centralDirectory, end]);
 if (
-  !verifiedNames.has('tabflow/ready-to-load/manifest.json') ||
-  !verifiedNames.has('tabflow/docs/configuration.md') ||
-  !verifiedNames.has('tabflow/docs/images/overview.png')
+  !verifiedNames.has('manifest.json') ||
+  !verifiedNames.has('background.js') ||
+  !verifiedNames.has('sidepanel.html')
 )
-  throw new Error('Package is missing the production extension or public documentation.');
+  throw new Error('Package is missing production extension entry points.');
 mkdirSync(dirname(output), { recursive: true });
 writeFileSync(output, archive);
+writeFileSync(
+  join(root, 'SHA256SUMS.txt'),
+  `${createHash('sha256').update(archive).digest('hex')}  TabFlow-${version}.zip\n`,
+);
 console.log(
   `Packaged ${output}: ${archive.length.toLocaleString()} bytes (${entries.length} files)`,
 );

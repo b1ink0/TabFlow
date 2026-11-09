@@ -11,6 +11,8 @@ playwright-report/
 !.env.example
 /TabFlow.zip
 /TabFlow-*.zip
+/TabFlow-*/
+/SHA256SUMS.txt
 *.7z
 
 /local-docs/

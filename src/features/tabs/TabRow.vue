@@ -45,7 +45,7 @@ const favicon = () =>
   chrome.runtime.getURL(`_favicon/?pageUrl=${encodeURIComponent(props.record.url)}&size=32`);
 const focus = () => {
   if (store.draggingTabs || Date.now() < store.suppressTabClicksUntil) return;
-  return store.run(() => rpc('focus', { id: props.record.id }));
+  return store.run(() => store.focusTab(props.record.id));
 };
 const protect = () =>
   store.run(async () => {

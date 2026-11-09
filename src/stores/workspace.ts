@@ -223,6 +223,29 @@ export const useWorkspace = defineStore('workspace', () => {
     }
   }
   let refreshing: Promise<void> | undefined;
+  let activationRevision = 0,
+    focusSequence = 0;
+  const recentActivations = new Map<number, { tabId: number; revision: number }>();
+  function noteTabActivated(info: chrome.tabs.OnActivatedInfo) {
+    const target = records.value.find(
+      (record) => record.live && record.tabId === info.tabId && record.windowId === info.windowId,
+    );
+    if (!target) return;
+    recentActivations.set(info.windowId, { tabId: info.tabId, revision: ++activationRevision });
+    for (const record of records.value)
+      if (record.live && record.windowId === info.windowId) record.active = record.id === target.id;
+    return target.id;
+  }
+  async function focusTab(id: string) {
+    const record = records.value.find((item) => item.id === id && item.live);
+    if (!record || record.tabId === undefined || record.windowId === undefined)
+      throw new Error('Tab is closed.');
+    const sequence = ++focusSequence,
+      revision = activationRevision;
+    await rpc('focus', { id });
+    if (sequence === focusSequence && revision === activationRevision)
+      noteTabActivated({ tabId: record.tabId, windowId: record.windowId });
+  }
   function refresh(): Promise<void> {
     if (refreshing) return refreshing;
     refreshing = loadState().finally(() => {
@@ -234,8 +257,15 @@ export const useWorkspace = defineStore('workspace', () => {
     // Background refresh keeps an already usable workspace interactive.
     loading.value = !app.value;
     loadError.value = '';
+    const startingRevision = activationRevision;
     try {
       const incoming = await rpc('state', undefined);
+      for (const record of incoming.records) {
+        const activation =
+          record.windowId === undefined ? undefined : recentActivations.get(record.windowId);
+        if (activation && activation.revision > startingRevision && record.live)
+          record.active = record.tabId === activation.tabId;
+      }
       app.value = reuseWorkspaceState(app.value, incoming);
       const liveIds = new Set(incoming.records.map((record) => record.id));
       const retainedSelection = [...selected.value].filter((id) => liveIds.has(id));
@@ -445,6 +475,8 @@ export const useWorkspace = defineStore('workspace', () => {
     draggingTabs,
     app,
     loading,
+    noteTabActivated,
+    focusTab,
     loadError,
     notice,
     notification,

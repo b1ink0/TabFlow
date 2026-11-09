@@ -62,9 +62,7 @@ This key is public identity configuration, not a private signing credential. `.e
 
 `package.json` is the version source for the generated extension manifest and application state. Update its `version` for each release, then rebuild.
 
-`bun run zip` builds the extension and creates `.output/tabflow-<version>-chrome.zip`, with `manifest.json` at the archive root. This is the extension-only release asset. Extract it before loading it unpacked.
-
-`bun run package` creates `TabFlow-<version>.zip` containing public source and the ready-to-load extension. It rejects a build whose manifest version differs from the package version. The packager uses explicit publication roots, excluding temporary artifacts, profiles and private notes. An optional public manifest key keeps unpacked extension identity stable.
+`bun run package` (also available as `bun run zip`) builds the production extension and creates `TabFlow-<version>.zip` and `SHA256SUMS.txt`. The version comes from `package.json`. The ZIP contains only the built extension, with `manifest.json` at its root. Extract it and select that folder in **Load unpacked**. Source code is available through the repository and GitHub's source archives.
 
 The publication audit reads both working files and staged copies. Review the complete proposed publication, including images and archives. Test and package commands do not commit or publish.
 

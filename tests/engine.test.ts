@@ -249,6 +249,37 @@ beforeEach(async () => {
   local.settings = { ...DEFAULTS };
 });
 describe('coordinator integration', () => {
+  it('prioritizes focus without interrupting a running mutation or losing queued work', async () => {
+    const order: string[] = [];
+    let release!: () => void;
+    const gate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const running = engine.serialized(async () => {
+      order.push('start');
+      await gate;
+      order.push('end');
+    });
+    const normal = engine.serialized(async () => {
+      order.push('normal');
+    });
+    const focus = engine.serialized(async () => {
+      order.push('focus');
+    }, true);
+    expect(order).toEqual(['start']);
+    release();
+    await Promise.all([running, normal, focus]);
+    expect(order).toEqual(['start', 'end', 'focus', 'normal']);
+    await expect(
+      engine.serialized(async () => {
+        throw new Error('failed');
+      }, true),
+    ).rejects.toThrow('failed');
+    await engine.serialized(async () => {
+      order.push('continued');
+    });
+    expect(order.at(-1)).toBe('continued');
+  });
   afterEach(() => vi.restoreAllMocks());
   async function permissionFixture(
     instruction = 'Add the reference tag to this selected tab.',

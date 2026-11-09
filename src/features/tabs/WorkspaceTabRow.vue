@@ -76,10 +76,7 @@ async function tags() {
 }
 async function activate() {
   if (store.draggingTabs || Date.now() < store.suppressTabClicksUntil) return;
-  await store.run(async () => {
-    await rpc('focus', { id: props.record.id });
-    await store.refresh();
-  });
+  await store.run(() => store.focusTab(props.record.id));
 }
 const secondaryActions = computed(() => [
   { label: 'Select tab', onSelect: () => emit('toggle', props.record.id) },
