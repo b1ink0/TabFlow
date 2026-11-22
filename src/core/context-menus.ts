@@ -71,8 +71,11 @@ export function nativeContextMenus(
       await openDashboard('tabs');
     });
     await add('reveal', 'Show this tab in TabFlow', async (_info, tab) => {
-      const { record } = await target(tab);
-      await show('reveal', record.id);
+      if (tab?.id === undefined || tab.incognito) throw new Error('Choose a normal browser tab.');
+      await chrome.sidePanel.open({ windowId: tab.windowId });
+      await chrome.storage.session.set({
+        [`workspaceReveal:${tab.windowId}`]: { tabId: tab.id, at: Date.now() },
+      });
     });
     await add('ask', 'Ask assistant about this tab', async (_info, tab) => {
       const { record } = await target(tab);
@@ -176,10 +179,15 @@ export function nativeContextMenus(
   if (chrome.contextMenus?.onClicked)
     chrome.contextMenus.onClicked.addListener((info, tab) => {
       if (!String(info.menuItemId).startsWith('tabflow-')) return;
+      const handler = handlers.get(String(info.menuItemId));
+      if (!handler) return;
+      if (String(info.menuItemId).endsWith('-reveal')) {
+        void handler(info, tab).catch(report);
+        return;
+      }
       void engine
         .serialized(async () => {
-          const handler = handlers.get(String(info.menuItemId));
-          if (handler) await handler(info, tab);
+          await handler(info, tab);
         })
         .catch((error: unknown) => {
           report(error);

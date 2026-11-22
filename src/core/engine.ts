@@ -98,6 +98,7 @@ import {
 import {
   observeSession,
   retainSessionForResume,
+  forgetSessionRecord,
   missingSessionIds,
   sessionForResume,
   savedSessionSummary,
@@ -770,10 +771,12 @@ async function suspendOne(
   id: string,
   {
     automatic = false,
+    force = false,
     capture = true,
     expected,
   }: {
     automatic?: boolean;
+    force?: boolean;
     capture?: boolean;
     expected?: { wrapper: string; windowId: number; groupId: number };
   } = {},
@@ -782,9 +785,10 @@ async function suspendOne(
   const config = await settings();
   if (suspendedInfo(tab.url, origin)?.owned) return { skipped: 'Already suspended' };
   if (r.locked) throw new Error(`Protected: ${r.title}`);
-  const blocked = suspensionBlock(r, tab, config, automatic);
+  if (!pageURL(r.url)) return { skipped: 'This browser page cannot be suspended' };
+  const blocked = force ? null : suspensionBlock(r, tab, config, automatic);
   if (blocked) return { skipped: blocked };
-  if (!r.foreignSuspended && capture) {
+  if (!force && !r.foreignSuspended && capture) {
     try {
       const content = await readPage(tab, config);
       if (content.url !== r.url) throw new Error('Page navigated while suspending.');
@@ -801,7 +805,7 @@ async function suspendOne(
       if (!/Grant page access/.test(errorMessage(e))) throw e;
     }
   }
-  if (!r.foreignSuspended && capture) await captureTabPreview(r, config);
+  if (!force && !r.foreignSuspended && capture) await captureTabPreview(r, config);
   r.suspendedFavicon = (await captureSuspendedFavicon(r.url)) || r.suspendedFavicon;
   await db.put('records', r);
   // Recheck immediately before navigation; inspection awaits can race user navigation.
@@ -813,9 +817,10 @@ async function suspendOne(
       fresh.groupId !== expected.groupId)
   )
     throw new Error('Placeholder navigated or moved before import; retained without importing.');
-  if ((suspendedInfo(fresh.url, origin)?.url || fresh.url) !== r.url)
+  const destination = fresh.pendingUrl || fresh.url;
+  if ((suspendedInfo(destination, origin)?.url || destination) !== r.url)
     throw new Error('Page navigated before suspension.');
-  const freshBlocked = suspensionBlock(r, fresh, config, automatic);
+  const freshBlocked = force ? null : suspensionBlock(r, fresh, config, automatic);
   if (freshBlocked) return { skipped: freshBlocked };
   await chrome.tabs.update(tab.id!, { url: makeSuspendedURL(origin, r) });
   r.suspended = true;
@@ -899,7 +904,9 @@ async function executeAction(action: PlanAction) {
   } else {
     const outcomes = [];
     for (const id of action.recordIds)
-      outcomes.push(await (action.type === 'suspend' ? suspendOne(id) : wakeOne(id)));
+      outcomes.push(
+        await (action.type === 'suspend' ? suspendOne(id, { force: action.force }) : wakeOne(id)),
+      );
     return outcomes;
   }
   return [{ done: true }];
@@ -1167,6 +1174,18 @@ export async function restoreSnapshot(
       )
     )
       target = undefined;
+    if (!target && !newWindows && onlyMissing) {
+      const siblingWindows = new Set(
+        w.tabs.flatMap((tab) => {
+          const record = byId.get(tab.recordId);
+          return record?.live && record.windowId !== undefined ? [record.windowId] : [];
+        }),
+      );
+      if (siblingWindows.size === 1)
+        target = existing.find(
+          (window) => siblingWindows.has(window.id!) && !claimedWindows.has(window.id!),
+        );
+    }
     if (!target && !newWindows) {
       const projectWindow = existing.find(
         (x) => w.projectId && bind.windows[x.id!] === w.projectId && !claimedWindows.has(x.id!),
@@ -1411,6 +1430,7 @@ export async function tabCommand(
       throw new Error('The tab changed while preparing this action.');
     if (input.command === 'close') {
       await chrome.tabs.remove(tab.id!);
+      await forgetSessionRecord(r.id);
       await db.put('records', { ...current.r, live: false, wasOpen: false });
     } else if (input.command === 'reload') {
       if (r.suspended) throw new Error('Wake this tab before reloading it.');
@@ -4587,7 +4607,7 @@ export async function activation(tabId: number) {
       });
   }
 }
-export async function closed(tabId: number) {
+export async function closed(tabId: number, intentional = false) {
   const b = await bindings();
   const r = await db.get('records', b.tabs[tabId]);
   if (r) {
@@ -4595,6 +4615,7 @@ export async function closed(tabId: number) {
     r.wasOpen = false;
     await db.put('records', r);
   }
+  if (intentional && r) await forgetSessionRecord(r.id);
   delete b.tabs[tabId];
   await saveBindings(b);
 }

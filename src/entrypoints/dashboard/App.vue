@@ -519,6 +519,38 @@ async function consumeWorkspaceIntent(raw?: unknown) {
     consumingIntent = false;
   }
 }
+async function consumePanelReveal() {
+  if (!sidePanel.value) return;
+  const { id } = await chrome.windows.getCurrent();
+  const key = `workspaceReveal:${id}`;
+  const value = (await chrome.storage.session.get(key))[key];
+  const schema = z.object({ tabId: z.number(), at: z.number() });
+  const parsed = schema.safeParse(value);
+  if (!parsed.success || Date.now() - parsed.data.at > 60_000) return;
+  await store.refresh();
+  const record = store.records.find(
+    (item) => item.live && item.tabId === parsed.data.tabId && item.windowId === id,
+  );
+  const latest = schema.safeParse((await chrome.storage.session.get(key))[key]);
+  if (
+    !latest.success ||
+    latest.data.at !== parsed.data.at ||
+    latest.data.tabId !== parsed.data.tabId
+  )
+    return;
+  await chrome.storage.session.remove(key);
+  if (record) store.revealTab(record.id);
+  else store.notify('This browser tab is no longer available.', true);
+}
+function receivePanelReveal(changes: Record<string, chrome.storage.StorageChange>, area: string) {
+  if (
+    area === 'session' &&
+    Object.entries(changes).some(
+      ([key, change]) => key.startsWith('workspaceReveal:') && change.newValue,
+    )
+  )
+    void store.run(consumePanelReveal);
+}
 function syncRoute() {
   const view = location.hash.slice(1);
   if (navigation.some((item) => item.id === view)) store.view = view;
@@ -532,18 +564,21 @@ function refreshVisibleSurface() {
 }
 onUnmounted(() => {
   chrome.runtime.onMessage.removeListener(receiveMigration);
+  chrome.storage.onChanged?.removeListener(receivePanelReveal);
   window.removeEventListener('hashchange', syncRoute);
   document.removeEventListener('visibilitychange', refreshVisibleSurface);
   window.removeEventListener('focus', refreshVisibleSurface);
 });
 onMounted(() => {
   chrome.runtime.onMessage.addListener(receiveMigration);
+  if (sidePanel.value) chrome.storage.onChanged?.addListener(receivePanelReveal);
   const requested = location.hash.slice(1);
   if (navigation.some((n) => n.id === requested)) store.view = requested;
   else if (sidePanel.value) store.view = 'tabs';
   void store.run(async () => {
     await store.refresh();
     await consumeWorkspaceIntent();
+    await consumePanelReveal();
     void runOrganizationQueue();
   });
   window.addEventListener('hashchange', syncRoute);

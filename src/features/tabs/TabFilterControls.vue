@@ -1,11 +1,12 @@
 <script setup lang="ts">
-import { computed, ref, toRaw } from 'vue';
+import { computed, ref } from 'vue';
 import UPopover from '@nuxt/ui/components/Popover.vue';
 import {
   PhSlidersHorizontal as SlidersHorizontal,
   PhCaretRight as ChevronRight,
 } from '@phosphor-icons/vue';
 import UiButton from '../../ui/UiButton.vue';
+import USelectMenu from '@nuxt/ui/components/SelectMenu.vue';
 import UiSelect from '../../ui/UiSelect.vue';
 import UiTagChecklist from '../../ui/UiTagChecklist.vue';
 
@@ -24,18 +25,17 @@ const count = computed(
   () =>
     store.filters.tags.length +
     Number(store.filters.untagged) +
-    Number(Boolean(store.filters.projectId)) +
-    Number(Boolean(store.filters.categoryId)) +
-    Number(Boolean(store.filters.groupId)) +
-    Number(Boolean(store.filters.windowId)),
+    store.filters.projectId.length +
+    store.filters.categoryId.length +
+    store.filters.groupId.length +
+    store.filters.windowId.length,
 );
-function choices(items: Array<{ label: string; value: string }>, value: string) {
+function choices(items: Array<{ label: string; value: string }>, selected: string[]) {
   return [
-    { label: 'All', value: '' },
     ...items,
-    ...(value && !items.some((item) => item.value === value)
-      ? [{ label: 'Unavailable · clear to broaden', value }]
-      : []),
+    ...selected
+      .filter((id) => !items.some((item) => item.value === id))
+      .map((value) => ({ label: 'Unavailable', value })),
   ];
 }
 const projects = computed(() =>
@@ -47,7 +47,9 @@ const projects = computed(() =>
 const categories = computed(() =>
   choices(
     (store.app?.categories || [])
-      .filter((c) => !store.filters.projectId || c.projectId === store.filters.projectId)
+      .filter(
+        (c) => !store.filters.projectId.length || store.filters.projectId.includes(c.projectId),
+      )
       .map((c) => ({
         label: `${store.app?.projects.find((p) => p.id === c.projectId)?.name} / ${c.name}`,
         value: c.id,
@@ -83,7 +85,7 @@ async function save() {
     {
       id,
       name: name.slice(0, 80),
-      filters: structuredClone(toRaw(store.filters)),
+      filters: JSON.parse(JSON.stringify(store.filters)),
       search: store.search,
     },
   ];
@@ -94,7 +96,12 @@ function load(id: string) {
   saved.value = id;
   const view = store.savedViews.find((v) => v.id === id);
   if (!view) return;
-  store.filters = structuredClone(toRaw(view.filters));
+  const filters = { ...view.filters };
+  for (const key of ['projectId', 'categoryId', 'windowId', 'groupId'] as const) {
+    const value = filters[key];
+    if (!Array.isArray(value)) filters[key] = value ? [value] : [];
+  }
+  store.filters = filters;
   store.search = view.search;
 }
 </script>
@@ -126,27 +133,46 @@ function load(id: string) {
             {
               key: 'project',
               label: 'Project',
-              value: projects.find((p) => p.value === store.filters.projectId)?.label,
+              value:
+                projects
+                  .filter((item) => store.filters.projectId.includes(item.value))
+                  .map((item) => item.label)
+                  .join(', ') || 'All',
             },
             {
               key: 'category',
               label: 'Category',
-              value: categories.find((c) => c.value === store.filters.categoryId)?.label,
+              value:
+                categories
+                  .filter((item) => store.filters.categoryId.includes(item.value))
+                  .map((item) => item.label)
+                  .join(', ') || 'All',
             },
             {
               key: 'tags',
               label: 'Tags',
-              value: store.filters.untagged ? 'Untagged' : store.filters.tags.join(', ') || 'All',
+              value:
+                [...(store.filters.untagged ? ['Untagged'] : []), ...store.filters.tags].join(
+                  ', ',
+                ) || 'All',
             },
             {
               key: 'window',
               label: 'Window',
-              value: windows.find((w) => w.value === store.filters.windowId)?.label,
+              value:
+                windows
+                  .filter((item) => store.filters.windowId.includes(item.value))
+                  .map((item) => item.label)
+                  .join(', ') || 'All',
             },
             {
               key: 'group',
               label: 'Native group',
-              value: groups.find((g) => g.value === store.filters.groupId)?.label,
+              value:
+                groups
+                  .filter((item) => store.filters.groupId.includes(item.value))
+                  .map((item) => item.label)
+                  .join(', ') || 'All',
             },
             {
               key: 'views',
@@ -172,17 +198,34 @@ function load(id: string) {
             />
           </button>
           <div v-if="active === item.key" class="flex flex-col gap-2 px-2 pb-2">
-            <UiSelect
+            <USelectMenu
               v-if="active === 'project'"
               v-model="store.filters.projectId"
-              :options="projects"
+              multiple
+              value-key="value"
+              placeholder="All"
+              :items="projects"
               aria-label="Filter by project"
-              @update:model-value="store.filters.categoryId = ''"
+              @update:model-value="
+                store.filters.categoryId = store.filters.categoryId.filter(
+                  (id) =>
+                    categories.some((item) => item.value === id) &&
+                    store.app?.categories.some(
+                      (item) =>
+                        item.id === id &&
+                        (!store.filters.projectId.length ||
+                          store.filters.projectId.includes(item.projectId)),
+                    ),
+                )
+              "
             />
-            <UiSelect
+            <USelectMenu
               v-else-if="active === 'category'"
               v-model="store.filters.categoryId"
-              :options="categories"
+              multiple
+              value-key="value"
+              placeholder="All"
+              :items="categories"
               aria-label="Filter by category"
             />
             <UiTagChecklist
@@ -190,18 +233,25 @@ function load(id: string) {
               v-model="store.filters.tags"
               v-model:mode="store.filters.mode"
               v-model:untagged="store.filters.untagged"
+              combine-untagged
               :options="store.tagVocabulary"
             />
-            <UiSelect
+            <USelectMenu
               v-else-if="active === 'window'"
               v-model="store.filters.windowId"
-              :options="windows"
+              multiple
+              value-key="value"
+              placeholder="All"
+              :items="windows"
               aria-label="Filter by window"
             />
-            <UiSelect
+            <USelectMenu
               v-else-if="active === 'group'"
               v-model="store.filters.groupId"
-              :options="groups"
+              multiple
+              value-key="value"
+              placeholder="All"
+              :items="groups"
               aria-label="Filter by native group"
             />
             <template v-else

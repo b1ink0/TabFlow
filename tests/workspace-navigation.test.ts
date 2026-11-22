@@ -36,17 +36,17 @@ describe('semantic workspace navigation', () => {
     ]);
     filter.mode = 'all';
     expect(workspaceRows(rows, [], { kind: 'all' }, '', filter).map((r) => r.id)).toEqual(['a']);
-    filter.windowId = '2';
+    filter.windowId = ['2', '3'];
     expect(workspaceRows(rows, [], { kind: 'all' }, '', filter)).toHaveLength(0);
     const link = writeTabFilters(new URLSearchParams('unrelated=kept'), {
       ...filter,
-      projectId: 'deleted-project',
+      projectId: ['deleted-project'],
       tags: ['C++', 'a&b'],
     });
     expect(link.get('unrelated')).toBe('kept');
     expect(readTabFilters(link)).toEqual({
       ...filter,
-      projectId: 'deleted-project',
+      projectId: ['deleted-project'],
       tags: ['C++', 'a&b'],
     });
     expect(workspaceRows(rows, [], { kind: 'all' }, '', readTabFilters(link))).toHaveLength(0);

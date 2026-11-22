@@ -188,7 +188,7 @@ export function startBackground() {
     void engine
       .serialized(async () => {
         if (info.isWindowClosing) await engine.preserveSession();
-        await engine.closed(id);
+        await engine.closed(id, !info.isWindowClosing);
       })
       .catch(report);
     schedule();

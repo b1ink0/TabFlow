@@ -355,6 +355,7 @@ export interface UpdateSummary {
 export type ActionType =
   'group' | 'ungroup' | 'move' | 'moveGroup' | 'reorder' | 'suspend' | 'wake' | 'pin' | 'mute';
 export interface PlanAction {
+  force?: true;
   type: ActionType;
   recordIds: string[];
   windowId?: number;

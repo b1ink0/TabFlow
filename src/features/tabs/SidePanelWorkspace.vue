@@ -58,14 +58,13 @@ const tag = computed(
   () =>
     store.filters.tags.length ||
     store.filters.untagged ||
-    store.filters.projectId ||
-    store.filters.categoryId ||
-    store.filters.windowId,
+    store.filters.projectId.length ||
+    store.filters.categoryId.length ||
+    store.filters.windowId.length,
 );
-const groupFilter = computed(() => store.filters.groupId);
+const groupFilter = computed(() => store.filters.groupId.length);
 const filterContext = computed(() => ({
   ...store.app,
-  groupId: groupFilter.value ? Number(groupFilter.value) : undefined,
 }));
 const shown = ref(35);
 const openProjects = useStorage<string[]>('tabflow.workspace.openProjects', []);
@@ -106,7 +105,7 @@ const treeDrag = useTabTreeDrag((_sourceId, targetId, position, movedIds, sectio
     : orderTabTreeDrop(
         projectMode.value && section
           ? section.treeRows.map((entry) => entry.record)
-          : store.treeRows(rows.value).map((entry) => entry.record),
+          : flatTreeRows.value.map((entry) => entry.record),
         movedIds,
         targetId,
         position,
@@ -261,6 +260,31 @@ async function restoreCategoryChange() {
     await store.refresh();
   });
 }
+function retainSearchPath(record: TabRecord) {
+  if (!search.value.trim() || !projectMode.value) return;
+  const projectId = memberMap.value.get(record.id)?.projectId || record.projectId;
+  const section = projectViews.value
+    .find((view) => view.project.id === projectId)
+    ?.sections.find((section) => section.records.some((item) => item.id === record.id));
+  if (!projectId || !section) return;
+  if (!openProjects.value.includes(projectId))
+    openProjects.value = [...openProjects.value, projectId];
+  activeProjectId.value = projectId;
+  if (closedCategories.value.includes(section.id))
+    closedCategories.value = closedCategories.value.filter((id) => id !== section.id);
+  const ancestors = new Set(tabAncestors(record.id, store.records));
+  if (store.collapsedBranches.some((id) => ancestors.has(id)))
+    store.collapsedBranches = store.collapsedBranches.filter((id) => !ancestors.has(id));
+  pendingSearchReveal = record.id;
+}
+let pendingSearchReveal: string | undefined;
+watch(search, async (value) => {
+  if (value.trim() || !pendingSearchReveal) return;
+  const id = pendingSearchReveal;
+  pendingSearchReveal = undefined;
+  await nextTick();
+  if (!store.hasFilters) await revealCurrent(true, id);
+});
 let revealRevision = 0;
 async function revealCurrent(automatic = false, recordId?: string) {
   if (automatic && (store.search || store.hasFilters || selecting.value || dialog.current)) return;
@@ -491,6 +515,7 @@ const rows = computed(() =>
 const inboxCount = computed(
   () => workspaceRows(store.records, memberships.value, { kind: 'inbox' }).length,
 );
+const flatTreeRows = computed(() => store.treeRows(rows.value));
 const projectViews = computed(() =>
   projects.value
     .map((project) => {
@@ -635,9 +660,9 @@ onMounted(async () => {
 function chooseScope(value: WorkspaceScope) {
   projectMode.value = false;
   scope.value = value;
-  store.filters.windowId = value.kind === 'window' ? String(value.windowId) : '';
-  store.filters.projectId = value.kind === 'project' ? value.projectId : '';
-  store.filters.categoryId = value.kind === 'project' ? value.categoryId || '' : '';
+  store.filters.windowId = value.kind === 'window' ? [String(value.windowId)] : [];
+  store.filters.projectId = value.kind === 'project' ? [value.projectId] : [];
+  store.filters.categoryId = value.kind === 'project' && value.categoryId ? [value.categoryId] : [];
 }
 function toggleProject(id: string, open: boolean) {
   openProjects.value = open
@@ -795,7 +820,7 @@ async function reviewNewTabs(value: boolean) {
           :variant="projectMode ? 'default' : 'ghost'"
           @click="
             projectMode = true;
-            store.filters.windowId = '';
+            store.filters.windowId = [];
             scope = { kind: 'all' };
           "
           >Projects</UiButton
@@ -940,6 +965,8 @@ async function reviewNewTabs(value: boolean) {
               target="[role=tablist]"
               draggable="[role=tab]"
               direction="horizontal"
+              :animation="150"
+              :fallback-tolerance="5"
               :delay="200"
               :delay-on-touch-only="true"
               :force-fallback="true"
@@ -962,7 +989,8 @@ async function reviewNewTabs(value: boolean) {
                 :ui="{
                   root: 'w-max min-w-full',
                   list: 'w-max min-w-full justify-start',
-                  trigger: 'shrink-0',
+                  trigger: 'shrink-0 data-[state=active]:bg-hover data-[state=active]:text-ink',
+                  indicator: 'hidden',
                 }"
                 aria-label="Workspace projects"
               />
@@ -1103,13 +1131,14 @@ async function reviewNewTabs(value: boolean) {
                       @order="reorderSemantic"
                       @assign="assign"
                       @inbox="moveToInbox"
+                      @activated="retainSearchPath"
                     />
                   </TransitionGroup>
                   <UiLoadMore
                     v-if="section.treeRows.length > (limits[section.id] || 8)"
                     :key="limits[section.id] || 8"
                     :remaining="section.treeRows.length - (limits[section.id] || 8)"
-                    @load="limits[section.id] = (limits[section.id] || 8) + 20"
+                    @load="limits[section.id] = (limits[section.id] || 8) + 12"
                   />
                   <p
                     v-if="!section.records.length"
@@ -1155,12 +1184,7 @@ async function reviewNewTabs(value: boolean) {
           }}</span>
         </div>
         <VueDraggable
-          :model-value="
-            store
-              .treeRows(rows)
-              .slice(0, shown)
-              .map((entry) => entry.record)
-          "
+          :model-value="flatTreeRows.slice(0, shown).map((entry) => entry.record)"
           :disabled="Boolean(search || tag || groupFilter)"
           :group="{ name: 'tabflow-semantic', pull: true, put: true }"
           :delay="200"
@@ -1182,7 +1206,7 @@ async function reviewNewTabs(value: boolean) {
           <UiBranchGuides v-if="store.tabTreeMode" :class="{ invisible: store.draggingTabs }" />
           <TransitionGroup :css="false" @enter="listMotion.enter" @leave="listMotion.leave">
             <WorkspaceTabRow
-              v-for="entry in store.treeRows(rows).slice(0, shown)"
+              v-for="entry in flatTreeRows.slice(0, shown)"
               :key="entry.record.id"
               :record="entry.record"
               :tree-depth="entry.depth"
@@ -1201,10 +1225,10 @@ async function reviewNewTabs(value: boolean) {
           {{ scope.kind === 'inbox' ? 'No tabs waiting in Inbox.' : 'No tabs match this view.' }}
         </p>
         <UiLoadMore
-          v-if="shown < store.treeRows(rows).length"
+          v-if="shown < flatTreeRows.length"
           :key="shown"
-          :remaining="rows.length - shown"
-          @load="shown += 35"
+          :remaining="flatTreeRows.length - shown"
+          @load="shown += 16"
         />
       </template>
     </div>

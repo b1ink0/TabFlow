@@ -44,7 +44,10 @@ function measure() {
   if (!bounds.width || !bounds.height) return;
   viewBox.value = `0 0 ${bounds.width} ${bounds.height}`;
   const nodes = new Map<string, Anchor>();
-  for (const row of element.parentElement.querySelectorAll<HTMLElement>('[data-tab-tree-id]')) {
+  const rows = element.parentElement.querySelectorAll<HTMLElement>('[data-tab-tree-id]');
+  const parentIds = new Set(Array.from(rows, (row) => row.dataset.tabTreeParent).filter(Boolean));
+  for (const row of rows) {
+    if (!row.dataset.tabTreeParent && !parentIds.has(row.dataset.tabTreeId)) continue;
     const icon = row.querySelector<HTMLElement>('[data-tab-tree-icon]');
     if (!icon || !row.dataset.tabTreeId) continue;
     const rect = icon.getBoundingClientRect();
@@ -135,12 +138,18 @@ useEventListener(target, 'focusout', (event) => {
   focused.value = rowId(event.relatedTarget);
 });
 useResizeObserver(target, schedule);
-useMutationObserver(target, schedule, {
-  childList: true,
-  subtree: true,
-  attributes: true,
-  attributeFilter: ['class', 'style', 'data-tab-tree-id', 'data-tab-tree-parent'],
-});
+useMutationObserver(
+  target,
+  (changes) => {
+    if (changes.some(({ target }) => !svg.value?.contains(target))) schedule();
+  },
+  {
+    childList: true,
+    subtree: true,
+    attributes: true,
+    attributeFilter: ['class', 'style', 'data-tab-tree-id', 'data-tab-tree-parent'],
+  },
+);
 onMounted(schedule);
 onUnmounted(() => cancelAnimationFrame(frame));
 </script>

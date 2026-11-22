@@ -17,6 +17,7 @@ import { useWorkspace } from '../../stores/workspace';
 import { useDialog } from '../../stores/dialog';
 import UiButton from '../../ui/UiButton.vue';
 import InferenceHistory from '../assistant/InferenceHistory.vue';
+import USelectMenu from '@nuxt/ui/components/SelectMenu.vue';
 import UiSelect from '../../ui/UiSelect.vue';
 import UiCheckbox from '../../ui/UiCheckbox.vue';
 import ProvenanceLabel from '../../ui/ProvenanceLabel.vue';
@@ -49,7 +50,7 @@ const { matches: tabMatches, searching: tabSearching } = useTabSearch(
   () => store.records,
   () => store.app,
 );
-const categoryFilter = ref('__all__');
+const categoryFilter = ref<string[]>([]);
 const shownTabs = ref(35);
 const visibleTabs = computed(() =>
   workspaceRows(
@@ -59,21 +60,23 @@ const visibleTabs = computed(() =>
     '',
     {
       ...store.filters,
-      projectId: props.project.id,
-      categoryId: categoryFilter.value.startsWith('__') ? '' : categoryFilter.value,
+      projectId: [props.project.id],
+      categoryId: [],
     },
     store.app,
   ).filter(
     (record) =>
       (!tabMatches.value || tabMatches.value.has(record.id)) &&
-      (categoryFilter.value !== '__none__' ||
-        !memberships.value.find((item) => item.recordId === record.id)?.categoryId),
+      (!categoryFilter.value.length ||
+        categoryFilter.value.includes(
+          memberships.value.find((item) => item.recordId === record.id)?.categoryId || '__none__',
+        )),
   ),
 );
 const treeTabs = computed(() =>
   store.treeRows(
     visibleTabs.value,
-    Boolean(tabSearch.value.trim()) || categoryFilter.value !== '__all__',
+    Boolean(tabSearch.value.trim()) || categoryFilter.value.length > 0,
   ),
 );
 watch([tabMatches, categoryFilter], () => {
@@ -773,12 +776,14 @@ async function retryJob(id: string) {
           placeholder="Find a tab…"
           class="min-w-40 flex-1"
         />
-        <UiSelect
+        <USelectMenu
           v-model="categoryFilter"
+          multiple
+          value-key="value"
+          placeholder="All categories"
           class="min-w-0 w-48 max-w-full"
           aria-label="Filter project category"
-          :options="[
-            { label: 'All categories', value: '__all__' },
+          :items="[
             { label: 'Uncategorized', value: '__none__' },
             ...categories.map((category) => ({
               label: category.name + ' · ' + count(category),

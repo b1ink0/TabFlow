@@ -58,17 +58,27 @@ export async function observeSession(snapshot: Snapshot) {
     for (const previous of recovery.snapshot.windows) {
       const missing = previous.tabs.filter((tab) => !liveIds.has(tab.recordId));
       if (!missing.length) continue;
-      const target = windows.find((window) => window.id === previous.id);
-      if (
-        target &&
-        previous.tabs.some((tab) => target.tabs.some((live) => live.recordId === tab.recordId))
-      ) {
+      const previousIds = new Set(previous.tabs.map((tab) => tab.recordId));
+      const original = windows.find((window) => window.id === previous.id);
+      const siblings = windows.filter((window) =>
+        window.tabs.some((tab) => previousIds.has(tab.recordId)),
+      );
+      const target = siblings.includes(original!)
+        ? original
+        : siblings.length === 1
+          ? siblings[0]
+          : undefined;
+      if (target) {
         target.tabs.push(...missing);
         target.tabs.sort((a, b) => a.index - b.index);
         for (const group of previous.groups)
           if (!target.groups.some((live) => live.id === group.id)) target.groups.push(group);
       } else {
-        windows.push({ ...previous, id: target ? virtualWindowId++ : previous.id, tabs: missing });
+        windows.push({
+          ...previous,
+          id: original ? virtualWindowId++ : previous.id,
+          tabs: missing,
+        });
       }
     }
     if (

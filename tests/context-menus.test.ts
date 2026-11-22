@@ -45,6 +45,7 @@ const tab: chrome.tabs.Tab = {
   groupId: -1,
   url: 'https://example.test/reading',
 };
+const openSidePanel = vi.fn(async () => undefined);
 beforeEach(() => {
   vi.clearAllMocks();
   tabContext = true;
@@ -81,6 +82,7 @@ beforeEach(() => {
   );
   mocks.execute.mockResolvedValue({ id: 'owner-change' });
   vi.stubGlobal('chrome', {
+    sidePanel: { open: openSidePanel },
     contextMenus: {
       create,
       removeAll: (callback: () => void) => callback(),
@@ -101,6 +103,18 @@ beforeEach(() => {
 });
 afterEach(() => vi.unstubAllGlobals());
 describe('native workspace menus', () => {
+  it('opens the clicked tab’s side panel and queues its reveal for that window', async () => {
+    const openDashboard = vi.fn(async () => 99);
+    await nativeContextMenus(openDashboard, vi.fn())();
+    click({ menuItemId: 'tabflow-tab-reveal', editable: false }, tab);
+    expect(openSidePanel).toHaveBeenCalledWith({ windowId: 1 });
+    await vi.waitFor(() =>
+      expect(setSession).toHaveBeenCalledWith({
+        'workspaceReveal:1': { tabId: 10, at: expect.any(Number) },
+      }),
+    );
+    expect(openDashboard).not.toHaveBeenCalled();
+  });
   it('retains page/link/action menus when the browser does not support tab-strip contexts', async () => {
     tabContext = false;
     await nativeContextMenus(

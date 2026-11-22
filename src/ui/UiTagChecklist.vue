@@ -10,6 +10,7 @@ const props = defineProps<{
   options: string[];
   mode: 'any' | 'all';
   untagged: boolean;
+  combineUntagged?: boolean;
 }>();
 const emit = defineEmits<{
   'update:modelValue': [value: string[]];
@@ -28,7 +29,7 @@ const matches = computed(() =>
     .filter((tag) => tag.toLocaleLowerCase().includes(query.value.toLocaleLowerCase())),
 );
 function toggle(tag: string) {
-  emit('update:untagged', false);
+  if (!props.combineUntagged) emit('update:untagged', false);
   emit(
     'update:modelValue',
     props.modelValue.includes(tag)
@@ -51,10 +52,10 @@ function toggle(tag: string) {
       ><label class="flex min-h-9 items-center gap-2 rounded px-2 hover:bg-hover"
         ><UiCheckbox
           :model-value="untagged"
-          label="Untagged only"
+          label="Untagged"
           @update:model-value="
             emit('update:untagged', $event);
-            emit('update:modelValue', []);
+            if (!combineUntagged) emit('update:modelValue', []);
           "
         /><span class="text-[13px]">Untagged</span></label
       ><label

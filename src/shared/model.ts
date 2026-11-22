@@ -469,6 +469,7 @@ export const actionSchema = z.object({
     'pin',
     'mute',
   ]),
+  force: z.literal(true).optional(),
   nativeGroupId: z.number().int().min(0).optional(),
   enabled: z.boolean().optional(),
   recordIds: z.array(z.string()).min(1),

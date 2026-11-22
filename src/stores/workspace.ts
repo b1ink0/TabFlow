@@ -39,10 +39,10 @@ export const useWorkspace = defineStore('workspace', () => {
     search = ref(''),
     filters = ref(readTabFilters(new URLSearchParams(browserWindow?.location.search || '')));
   const projectFilter = computed({
-    get: () => filters.value.projectId || null,
+    get: () => filters.value.projectId[0] || null,
     set: (id: string | null) => {
-      filters.value.projectId = id || '';
-      filters.value.categoryId = '';
+      filters.value.projectId = id ? [id] : [];
+      filters.value.categoryId = [];
     },
   });
   const savedViews = useStorage<
@@ -146,10 +146,10 @@ export const useWorkspace = defineStore('workspace', () => {
     Boolean(
       filters.value.tags.length ||
       filters.value.untagged ||
-      filters.value.projectId ||
-      filters.value.categoryId ||
-      filters.value.groupId ||
-      filters.value.windowId,
+      filters.value.projectId.length ||
+      filters.value.categoryId.length ||
+      filters.value.groupId.length ||
+      filters.value.windowId.length,
     ),
   );
   const draggingTabs = ref(false);
@@ -203,7 +203,7 @@ export const useWorkspace = defineStore('workspace', () => {
     workspaceRows(
       records.value,
       app.value?.memberships || [],
-      projectFilter.value ? { kind: 'project', projectId: projectFilter.value } : { kind: 'all' },
+      { kind: 'all' },
       '',
       filters.value,
       app.value,

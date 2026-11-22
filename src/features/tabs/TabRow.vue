@@ -82,6 +82,25 @@ const address = computed(() => {
 });
 const secondaryActions = computed(() => [
   {
+    label: 'Force suspend tab',
+    disabled: props.record.suspended || props.record.locked,
+    onSelect: () =>
+      store.run(async () => {
+        if (
+          await dialog.ask(
+            'Force suspend this tab?',
+            [],
+            'Unsaved changes and playback may be lost.',
+            'Force suspend',
+          )
+        )
+          await store.apply(
+            [{ type: 'suspend', recordIds: [props.record.id], force: true }],
+            'Force suspend tab',
+          );
+      }),
+  },
+  {
     label: props.record.suspended ? 'Wake tab' : 'Suspend tab',
     onSelect: () =>
       store.run(() =>

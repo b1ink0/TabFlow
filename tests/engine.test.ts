@@ -2420,6 +2420,26 @@ describe('coordinator integration', () => {
       (await engine.state()).records.some((record) => record.url.endsWith('/latest-work')),
     ).toBe(true);
   });
+  it('excludes individually closed tabs from session recovery', async () => {
+    await engine.state();
+    await engine.saveSession();
+    tabs.delete(11);
+    await engine.closed(11, true);
+    expect((await engine.state()).session?.missingTabs).toBe(0);
+    expect(await engine.resumeSession()).toEqual([]);
+  });
+  it('resumes into the window containing a surviving tab even after its window ID changes', async () => {
+    await engine.state();
+    await engine.saveSession();
+    tabs.delete(11);
+    tabs.get(12)!.windowId = 42;
+    const outcomes = await engine.resumeSession();
+    expect(outcomes).toHaveLength(1);
+    expect(outcomes[0]?.ok).toBe(true);
+    expect([...tabs.values()].find((tab) => tab.url?.includes('/suspended.html#'))?.windowId).toBe(
+      42,
+    );
+  });
   it('resumes only missing tabs without moving, waking, or overwriting survivors and group edits', async () => {
     const app = await engine.state();
     await engine.applyPlan({
@@ -5057,6 +5077,22 @@ describe('coordinator integration', () => {
     const app = await engine.state();
     expect(app.records).toHaveLength(4);
     expect(new Set(app.records.map((r) => r.id)).size).toBe(4);
+  });
+  it('requires force to suspend an audible excluded site and keeps locked tabs protected', async () => {
+    tabs.get(11)!.url = 'https://www.youtube.com/watch?v=example';
+    tabs.get(11)!.audible = true;
+    local.settings = { ...DEFAULTS, protectAudio: true, neverSuspendSites: 'youtube.com' };
+    const record = (await engine.state()).records.find((item) => item.tabId === 11)!;
+    const action = { type: 'suspend' as const, recordIds: [record.id] };
+    await engine.applyPlan({ summary: 'Suspend', actions: [action] });
+    expect(tabs.get(11)?.url).toBe(record.url);
+    await database.records.update(record.id, { locked: true });
+    await expect(
+      engine.applyPlan({ summary: 'Force suspend', actions: [{ ...action, force: true }] }),
+    ).rejects.toThrow();
+    await database.records.update(record.id, { locked: false });
+    await engine.applyPlan({ summary: 'Force suspend', actions: [{ ...action, force: true }] });
+    expect(tabs.get(11)?.url).toContain('/suspended.html#');
   });
   it('suspends in place and snapshots original addresses', async () => {
     const app = await engine.state();

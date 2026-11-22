@@ -2,26 +2,26 @@ export interface TabFilters {
   tags: string[];
   mode: 'any' | 'all';
   untagged: boolean;
-  projectId: string;
-  categoryId: string;
-  groupId: string;
-  windowId: string;
+  projectId: string[];
+  categoryId: string[];
+  groupId: string[];
+  windowId: string[];
 }
 export const emptyTabFilters = (): TabFilters => ({
   tags: [],
   mode: 'any',
   untagged: false,
-  projectId: '',
-  categoryId: '',
-  groupId: '',
-  windowId: '',
+  projectId: [],
+  categoryId: [],
+  groupId: [],
+  windowId: [],
 });
 export function matchesTags(
   tags: readonly string[],
   filter: Pick<TabFilters, 'tags' | 'mode' | 'untagged'>,
 ) {
-  if (filter.untagged) return tags.length === 0;
-  if (!filter.tags.length) return true;
+  if (filter.untagged && tags.length === 0) return true;
+  if (!filter.tags.length) return !filter.untagged;
   return filter.mode === 'all'
     ? filter.tags.every((tag) => tags.includes(tag))
     : filter.tags.some((tag) => tags.includes(tag));
@@ -33,10 +33,10 @@ export function readTabFilters(params: URLSearchParams): TabFilters {
     ].slice(0, 20),
     mode: params.get('tagMatch') === 'all' ? 'all' : 'any',
     untagged: params.get('untagged') === '1',
-    projectId: params.get('project') || '',
-    categoryId: params.get('category') || '',
-    groupId: params.get('group') || '',
-    windowId: params.get('window') || '',
+    projectId: [...new Set(params.getAll('project').filter(Boolean))],
+    categoryId: [...new Set(params.getAll('category').filter(Boolean))],
+    groupId: [...new Set(params.getAll('group').filter(Boolean))],
+    windowId: [...new Set(params.getAll('window').filter(Boolean))],
   };
 }
 export function writeTabFilters(params: URLSearchParams, filter: TabFilters): URLSearchParams {
@@ -51,7 +51,7 @@ export function writeTabFilters(params: URLSearchParams, filter: TabFilters): UR
     ['category', filter.categoryId],
     ['group', filter.groupId],
     ['window', filter.windowId],
-  ])
-    if (value) next.set(key!, value!);
+  ] as const)
+    for (const id of value) next.append(key, id);
   return next;
 }

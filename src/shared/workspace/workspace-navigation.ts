@@ -31,10 +31,11 @@ export function workspaceRows(
       const projectId = membership ? membership.projectId : record.projectId;
       if (typeof tag !== 'string') {
         if (!matchesTags(record.tags, tag)) return false;
-        if (tag.projectId && projectId !== tag.projectId) return false;
-        if (tag.categoryId && membership?.categoryId !== tag.categoryId) return false;
-        if (tag.windowId && record.windowId !== Number(tag.windowId)) return false;
-        if (tag.groupId && record.groupId !== Number(tag.groupId)) return false;
+        if (tag.projectId.length && !tag.projectId.includes(projectId || '')) return false;
+        if (tag.categoryId.length && !tag.categoryId.includes(membership?.categoryId || ''))
+          return false;
+        if (tag.windowId.length && !tag.windowId.includes(String(record.windowId))) return false;
+        if (tag.groupId.length && !tag.groupId.includes(String(record.groupId ?? -1))) return false;
       }
       if (scope.kind === 'window' && record.windowId !== scope.windowId) return false;
       if (scope.kind === 'inbox' && projectId) return false;

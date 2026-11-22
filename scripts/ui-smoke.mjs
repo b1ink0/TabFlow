@@ -1467,6 +1467,35 @@ try {
       { state, base, version: applicationVersion },
     );
     let delayedViewChunks = 0;
+    if (process.env.TABFLOW_UI_FOCUS === 'sidebar-scroll') {
+      await page.setViewportSize({ width: 420, height: 900 });
+      await page.goto(`${base}/sidepanel.html`);
+      await page.getByRole('button', { name: 'All tabs', exact: true }).waitFor();
+      await page.evaluate(() => window.__largeWorkspaceFixture());
+      await activateWorkspaceAction(page, 'Refresh workspace');
+      await page.getByRole('button', { name: 'All tabs', exact: true }).click();
+      const rows = page.locator('[data-workspace-record-id]');
+      await rows.first().waitFor();
+      const previousCount = await rows.count();
+      const viewport = page.locator('main > [data-reka-scroll-area-viewport]');
+      await viewport.evaluate((element) => {
+        element.scrollTop = element.scrollHeight;
+      });
+      await page.waitForFunction(
+        (count) => document.querySelectorAll('[data-workspace-record-id]').length > count,
+        previousCount,
+      );
+      assert.equal(
+        await rows
+          .last()
+          .locator('[data-tab-tree-content]')
+          .evaluate((node) => window.getComputedStyle(node).contentVisibility),
+        'auto',
+      );
+      await page.screenshot({ path: 'artifacts/ui-sidebar-scroll.png', animations: 'disabled' });
+      console.log('Large sidebar fixture loaded another batch while scrolling.');
+      continue;
+    }
     if (process.env.TABFLOW_UI_FOCUS === 'activation') {
       await page.goto(`${base}/sidepanel.html`);
       await page.getByRole('button', { name: 'Projects', exact: true }).waitFor();
@@ -1526,6 +1555,17 @@ try {
         path: 'artifacts/ui-activation-compact.png',
         animations: 'disabled',
       });
+      const category = page.getByRole('button', { name: /^No category/ });
+      await category.click();
+      await project.click();
+      const search = page.getByRole('searchbox', { name: 'Search tabs', exact: true });
+      await search.fill('Branch level 5');
+      await leaf.getByText('Branch level 5', { exact: true }).click();
+      await leaf.locator('button[aria-current=page]').waitFor();
+      await search.fill('');
+      await leaf.waitFor();
+      assert.equal(await project.getAttribute('aria-expanded'), 'true');
+      assert.equal(await category.getAttribute('aria-expanded'), 'true');
       console.log(
         'Activation fixture passed: immediate native-event selection, stationary expanded rows, no state reads and hidden ancestor reveal.',
       );

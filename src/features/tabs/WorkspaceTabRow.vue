@@ -33,6 +33,7 @@ const props = defineProps<{
   childCount?: number;
 }>();
 const emit = defineEmits<{
+  activated: [record: TabRecord];
   assign: [record: TabRecord];
   inbox: [record: TabRecord];
   toggle: [id: string];
@@ -76,7 +77,11 @@ async function tags() {
 }
 async function activate() {
   if (store.draggingTabs || Date.now() < store.suppressTabClicksUntil) return;
-  await store.run(() => store.focusTab(props.record.id));
+  const record = props.record;
+  await store.run(async () => {
+    await store.focusTab(record.id);
+    emit('activated', record);
+  });
 }
 const secondaryActions = computed(() => [
   { label: 'Select tab', onSelect: () => emit('toggle', props.record.id) },
@@ -99,6 +104,25 @@ const secondaryActions = computed(() => [
     label: 'Move to Inbox',
     disabled: !props.record.projectId,
     onSelect: () => emit('inbox', props.record),
+  },
+  {
+    label: 'Force suspend tab',
+    disabled: props.record.suspended || props.record.locked,
+    onSelect: () =>
+      store.run(async () => {
+        if (
+          await dialog.ask(
+            'Force suspend this tab?',
+            [],
+            'Unsaved changes and playback may be lost.',
+            'Force suspend',
+          )
+        )
+          await store.apply(
+            [{ type: 'suspend', recordIds: [props.record.id], force: true }],
+            'Force suspend tab',
+          );
+      }),
   },
   {
     label: props.record.suspended ? 'Wake tab' : 'Suspend tab',
@@ -197,6 +221,12 @@ const actions = computed(() => [
         <div
           data-tab-tree-content
           class="flex min-w-0 flex-1 items-center gap-2"
+          :class="
+            !treeDepth &&
+            !childCount &&
+            !store.draggingTabs &&
+            '[content-visibility:auto] [contain-intrinsic-block-size:auto_46px]'
+          "
           :style="{ paddingInlineStart: `${(selecting ? 8 : 0) + (treeDepth || 0) * 4}px` }"
         >
           <UiBranchToggle
